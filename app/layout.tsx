@@ -1,3 +1,4 @@
+import SmoothScroll from "../components/SmoothScroll";
 import "./globals.css";
 import Header from "../components/Header";
 import { Vazirmatn } from "next/font/google";
@@ -21,7 +22,9 @@ export default function RootLayout({
         style={{ overflowX: "hidden", background: "#050505", color: "#fff" }}
       >
         <Header />
-        <main>{children}</main>
+        <SmoothScroll>
+  <main>{children}</main>
+</SmoothScroll>
       </body>
     </html>
   );
