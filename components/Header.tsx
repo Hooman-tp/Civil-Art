@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Header() {
   return (
     <header
@@ -19,9 +21,17 @@ export default function Header() {
         Civil-Art
       </div>
       <nav style={{ display: "flex", gap: "24px" }}>
-        <a href="/" style={{ color: "#fff", textDecoration: "none" }}>خانه</a>
-        <a href="/about" style={{ color: "#fff", textDecoration: "none" }}>درباره ما</a>
-        <a href="/contact" style={{ color: "#fff", textDecoration: "none" }}>تماس</a>
+        <Link href="/" style={{ color: "#fff", textDecoration: "none" }}>
+  خانه
+</Link>
+
+<Link href="/about" style={{ color: "#fff", textDecoration: "none" }}>
+  درباره ما
+</Link>
+
+<Link href="/contact" style={{ color: "#fff", textDecoration: "none" }}>
+  تماس
+</Link>
       </nav>
     </header>
   );
