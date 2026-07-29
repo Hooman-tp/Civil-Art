@@ -1,6 +1,23 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+
+const NAV_ITEMS = [
+  { href: "/", label: "خانه" },
+  { href: "/about", label: "درباره ما" },
+  { href: "/services", label: "خدمات" },
+  { href: "/projects", label: "پروژه‌ها" },
+  { href: "/gallery", label: "گالری" },
+  { href: "/team", label: "تیم ما" },
+  { href: "/contact", label: "تماس" },
+];
 
 export default function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+
   return (
     <header
       style={{
@@ -11,28 +28,144 @@ export default function Header() {
         zIndex: 100,
         background: "rgba(10,10,10,0.9)",
         borderBottom: "1px solid rgba(212,175,55,0.2)",
-        padding: "16px 32px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
       }}
     >
-      <div style={{ color: "#D4AF37", fontWeight: 900, fontSize: "20px" }}>
-        Civil-Art
+      <div
+        style={{
+          padding: "16px 24px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          maxWidth: "1400px",
+          margin: "0 auto",
+        }}
+      >
+        <Link
+          href="/"
+          style={{ color: "#D4AF37", fontWeight: 900, fontSize: "20px", textDecoration: "none" }}
+        >
+          Civil-Art
+        </Link>
+
+        {/* ── منو دسکتاپ ── */}
+        <nav className="desktop-nav" style={{ display: "flex", gap: "22px" }}>
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                style={{
+                  color: isActive ? "#D4AF37" : "#fff",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  fontWeight: isActive ? 700 : 400,
+                  whiteSpace: "nowrap",
+                  borderBottom: isActive ? "2px solid #D4AF37" : "2px solid transparent",
+                  paddingBottom: "4px",
+                  transition: "color 0.2s",
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* ── دکمه همبرگری ── */}
+        <button
+          className="hamburger-btn"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="باز کردن منو"
+          aria-expanded={menuOpen}
+          style={{
+            display: "none",
+            flexDirection: "column",
+            gap: "5px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+          }}
+        >
+          <span
+            style={{
+              width: "24px",
+              height: "2px",
+              background: "#D4AF37",
+              transition: "transform 0.3s",
+              transform: menuOpen ? "rotate(45deg) translate(5px,5px)" : "none",
+            }}
+          />
+          <span
+            style={{
+              width: "24px",
+              height: "2px",
+              background: "#D4AF37",
+              opacity: menuOpen ? 0 : 1,
+              transition: "opacity 0.3s",
+            }}
+          />
+          <span
+            style={{
+              width: "24px",
+              height: "2px",
+              background: "#D4AF37",
+              transition: "transform 0.3s",
+              transform: menuOpen ? "rotate(-45deg) translate(5px,-5px)" : "none",
+            }}
+          />
+        </button>
       </div>
-      <nav style={{ display: "flex", gap: "24px" }}>
-        <Link href="/" style={{ color: "#fff", textDecoration: "none" }}>
-  خانه
-</Link>
 
-<Link href="/about" style={{ color: "#fff", textDecoration: "none" }}>
-  درباره ما
-</Link>
+      {/* ── منوی موبایل ── */}
+      {menuOpen && (
+        <nav
+          className="mobile-nav"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "8px 24px 20px",
+            gap: "4px",
+            borderTop: "1px solid rgba(212,175,55,0.1)",
+            maxHeight: "70vh",
+            overflowY: "auto",
+          }}
+        >
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMenuOpen(false)}
+                aria-current={isActive ? "page" : undefined}
+                style={{
+                  color: isActive ? "#D4AF37" : "#fff",
+                  fontWeight: isActive ? 700 : 400,
+                  textDecoration: "none",
+                  padding: "12px 0",
+                  fontSize: "16px",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
-<Link href="/contact" style={{ color: "#fff", textDecoration: "none" }}>
-  تماس
-</Link>
-      </nav>
+      <style>{`
+        @media (max-width: 900px) {
+          .desktop-nav { display: none !important; }
+          .hamburger-btn { display: flex !important; }
+        }
+        @media (min-width: 901px) {
+          .mobile-nav { display: none !important; }
+        }
+      `}</style>
     </header>
   );
 }

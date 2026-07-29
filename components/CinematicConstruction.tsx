@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from "react";
 const VIDEO_SRC = "/videos/construction.mp4";
 
 const STEPS = [
-  { time: 0,    label: "اجرای فونداسیون",        desc: "شروع از صفر، با چشمی به آینده" },
-  { time: 0.15, label: "اسکلت بتنی",        desc: "پایه‌های محکم از اعماق زمین" },
-  { time: 0.25, label: "اجرای دیوارها", desc: "بنیانی که نسل‌ها بر آن خواهند ایستاد" },
-  { time: 0.37, label: "اجرای نما",      desc: "شکل گرفتن رویا در آهن و فولاد" },
-  { time: 0.55, label: "محوطه سازی حیات",        desc: "هنر در لایه بیرونی هر سازه" },
-  { time: 0.90, label: "تحویل پروژه",      desc: "لحظه‌ای که افتخار به دست می‌آید" },
+  { time: 0,    label: "اجرای فونداسیون", desc: "شروع از صفر، با چشمی به آینده" },
+  { time: 0.15, label: "اسکلت بتنی",      desc: "پایه‌های محکم از اعماق زمین" },
+  { time: 0.25, label: "اجرای دیوارها",  desc: "بنیانی که نسل‌ها بر آن خواهند ایستاد" },
+  { time: 0.37, label: "اجرای نما",       desc: "شکل گرفتن رویا در آهن و فولاد" },
+  { time: 0.55, label: "محوطه سازی حیات", desc: "هنر در لایه بیرونی هر سازه" },
+  { time: 0.90, label: "تحویل پروژه",     desc: "لحظه‌ای که افتخار به دست می‌آید" },
 ];
 
 export default function CinematicConstruction() {
@@ -34,7 +34,6 @@ export default function CinematicConstruction() {
 
     video.addEventListener("loadedmetadata", onLoadedMeta);
 
-    // اگر ویدیو از قبل (قبل از mount شدن listener) آماده بوده باشد
     if (video.readyState >= 1 && video.videoWidth > 0) {
       setIsVertical(video.videoHeight > video.videoWidth);
       setReady(true);
@@ -80,6 +79,7 @@ export default function CinematicConstruction() {
   return (
     <div ref={wrapperRef} style={{ height: "300vh", position: "relative" }}>
       <div
+        className="cinematic-sticky"
         style={{
           position: "sticky",
           top: 0,
@@ -88,6 +88,21 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
+        {/*
+          ══════════════════════════════════════════════════════
+          Responsive با CSS خالص (نه جاوااسکریپت):
+
+          کلاس .cinematic-video کنترل می‌کند:
+          - دسکتاپ (بالای 768px): width: 40%, height: 108vh
+          - موبایل (768px و کمتر): width: 100%, height: 100vh
+
+          این روش قابل‌اطمینان‌تر از تشخیص با window.innerWidth
+          در جاوااسکریپت است، چون مرورگر مستقیماً و بدون تأخیر
+          media query را اعمال می‌کند و با تغییر اندازه صفحه در
+          DevTools هم بلافاصله (بدون نیاز به رویداد resize) به‌روز
+          می‌شود.
+          ══════════════════════════════════════════════════════
+        */}
         {isVertical && (
           <video
             ref={blurRef}
@@ -112,15 +127,32 @@ export default function CinematicConstruction() {
           muted
           playsInline
           preload="auto"
+          className="cinematic-video"
           style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            objectFit: isVertical ? "contain" : "cover",
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            objectFit: "cover",
             objectPosition: "center",
             zIndex: 1,
           }}
         >
           <source src={VIDEO_SRC} type="video/mp4" />
         </video>
+
+        <style>{`
+          .cinematic-video {
+            width: 40%;
+            height: ${isVertical ? "108vh" : "100%"};
+          }
+          @media (max-width: 768px) {
+            .cinematic-video {
+              width: 100% !important;
+              height: ${isVertical ? "100vh" : "100%"} !important;
+            }
+          }
+        `}</style>
 
         <div
           style={{
@@ -134,32 +166,54 @@ export default function CinematicConstruction() {
           <div style={{ height: "100%", width: `${progress * 100}%`, background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        <div style={{ position: "absolute", top: "2rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="cinematic-label-top" style={{ position: "absolute", top: "2rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 36, height: 1, background: "#D4AF37" }} />
           <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700 }}>مراحل ساخت</span>
         </div>
 
-        <div style={{ position: "absolute", left: "2rem", top: "50%", transform: "translateY(-50%)", zIndex: 10, display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className="cinematic-dots" style={{ position: "absolute", left: "2rem", top: "50%", transform: "translateY(-50%)", zIndex: 10, display: "flex", flexDirection: "column", gap: "1rem" }}>
           {STEPS.map((_, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, opacity: i === activeStep ? 1 : 0.22 }}>
               <div style={{ width: i === activeStep ? 10 : 4, height: i === activeStep ? 10 : 4, borderRadius: "50%", background: "#D4AF37", transition: "all 0.3s" }} />
-              {i === activeStep && <span style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 3, fontWeight: 700 }}>{String(i + 1).padStart(2, "0")}</span>}
+              {i === activeStep && <span className="cinematic-dot-num" style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 3, fontWeight: 700 }}>{String(i + 1).padStart(2, "0")}</span>}
             </div>
           ))}
         </div>
 
-        <div key={activeStep} style={{ position: "absolute", bottom: "3.5rem", right: "3rem", zIndex: 10, maxWidth: 500, animation: "caFade 0.5s ease forwards" }}>
+        <div key={activeStep} className="cinematic-text" style={{ position: "absolute", bottom: "3.5rem", right: "3rem", zIndex: 10, maxWidth: 500, animation: "caFade 0.5s ease forwards" }}>
           <style>{`
             @keyframes caFade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
             @keyframes caSpin { to { transform:rotate(360deg); } }
+
+            .cinematic-label-top { top: 2rem; right: 3rem; }
+            .cinematic-dots { left: 2rem; gap: 1rem; }
+            .cinematic-text { bottom: 3.5rem; right: 3rem; max-width: 500px; }
+
+            @media (max-width: 768px) {
+              .cinematic-label-top { top: 1.2rem !important; right: 1.2rem !important; }
+              .cinematic-label-top span { font-size: 10px !important; letter-spacing: 3px !important; }
+              .cinematic-label-top div { width: 24px !important; }
+
+              .cinematic-dots { left: 1rem !important; gap: 0.6rem !important; }
+              .cinematic-dot-num { display: none !important; }
+
+              .cinematic-text {
+                bottom: 2rem !important;
+                right: 1.2rem !important;
+                left: 1.2rem !important;
+                max-width: none !important;
+              }
+              .cinematic-text h2 { font-size: clamp(22px,7vw,32px) !important; }
+              .cinematic-text p { font-size: clamp(12px,3vw,14px) !important; }
+            }
           `}</style>
           <div style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, marginBottom: "0.6rem" }}>
             {toPersian(activeStep + 1)} / {toPersian(STEPS.length)}
           </div>
-          <h2 style={{ color: "#fff", fontSize: "clamp(28px,4.5vw,62px)", fontWeight: 900, lineHeight: 1.1, marginBottom: "0.6rem" }}>
+          <h2 style={{ color: "#fff", fontSize: "clamp(28px,4.5vw,62px)", fontWeight: 900, lineHeight: 1.15, marginBottom: "0.6rem" }}>
             {step.label}
           </h2>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "clamp(13px,1vw,15px)", lineHeight: 1.9, fontWeight: 300, maxWidth: 320 }}>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "clamp(13px,1vw,15px)", lineHeight: 1.8, fontWeight: 300 }}>
             {step.desc}
           </p>
           <div style={{ width: 40, height: 2, background: "#D4AF37", marginTop: "1rem" }} />
