@@ -1,46 +1,82 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
+
+type SubmitStatus = "idle" | "submitting" | "success" | "error";
+
+interface ContactApiResponse {
+  success: boolean;
+  error?: string;
+}
+
+const DEFAULT_ERROR_MESSAGE =
+  "ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت خود را بررسی و دوباره تلاش کنید.";
 
 export default function ContactPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const subjectRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
+  // Honeypot: invisible to real users, bots that auto-fill every field trip this.
+  const companyRef = useRef<HTMLInputElement>(null);
 
-  /*
-    ══════════════════════════════════════════════════════════
-    نکته مهم: این فرم فعلاً به هیچ سرویس ایمیل واقعی وصل نیست
-    (چون هیچ API key یا سرویس بک‌اندی تنظیم نشده). به‌جای نمایش
-    یک پیام موفقیت دروغین که هیچ پیامی واقعاً ارسال نمی‌کند، این
-    فرم مستقیماً برنامه‌ی ایمیل پیش‌فرض کاربر (Gmail، Outlook و
-    غیره) را با اطلاعات فرم از پیش پر می‌کند و باز می‌کند — دقیقاً
-    مثل دکمه‌ی واتساپ، بدون نیاز به هیچ تنظیمات یا هزینه‌ی سرویس.
+  const resetForm = () => {
+    if (nameRef.current) nameRef.current.value = "";
+    if (phoneRef.current) phoneRef.current.value = "";
+    if (subjectRef.current) subjectRef.current.value = "";
+    if (messageRef.current) messageRef.current.value = "";
+    if (companyRef.current) companyRef.current.value = "";
+    setStatus("idle");
+    setErrorMessage("");
+  };
 
-    اگر بعداً خواستی این فرم به‌صورت خودکار (بدون باز شدن ایمیل)
-    مستقیم به inbox ارسال شود، باید یک سرویس مثل Web3Forms،
-    Formspree یا Resend را تنظیم کنی و اینجا یک fetch به API آن
-    سرویس اضافه شود.
-    ══════════════════════════════════════════════════════════
-  */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const name = nameRef.current?.value || "";
-    const phone = phoneRef.current?.value || "";
-    const subject = subjectRef.current?.value || "درخواست مشاوره از سایت";
-    const message = messageRef.current?.value || "";
+    if (status === "submitting") return;
 
-    const body = `نام: ${name}\nشماره تماس: ${phone}\n\nپیام:\n${message}`;
+    setStatus("submitting");
+    setErrorMessage("");
 
-    const mailtoLink = `mailto:hooman.tp@gmail.com?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
+    const payload = {
+      name: nameRef.current?.value.trim() || "",
+      phone: phoneRef.current?.value.trim() || "",
+      subject: subjectRef.current?.value.trim() || "",
+      message: messageRef.current?.value.trim() || "",
+      company: companyRef.current?.value.trim() || "",
+    };
 
-    window.location.href = mailtoLink;
-    setSubmitted(true);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      let data: ContactApiResponse | null = null;
+      try {
+        data = (await response.json()) as ContactApiResponse;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok || !data?.success) {
+        setStatus("error");
+        setErrorMessage(data?.error || DEFAULT_ERROR_MESSAGE);
+        return;
+      }
+
+      setStatus("success");
+    } catch {
+      setStatus("error");
+      setErrorMessage(DEFAULT_ERROR_MESSAGE);
+    }
   };
+
+  const isSubmitting = status === "submitting";
 
   return (
     <div style={{ background: "#050505", color: "#fff" }}>
@@ -157,8 +193,10 @@ export default function ContactPage() {
 
           {/* ستون فرم */}
           <div>
-            {submitted ? (
+            {status === "success" ? (
               <div
+                role="status"
+                aria-live="polite"
                 style={{
                   background: "rgba(212,175,55,0.08)",
                   border: "1px solid rgba(212,175,55,0.3)",
@@ -167,16 +205,17 @@ export default function ContactPage() {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "32px", marginBottom: "12px" }}>✉️</div>
+                <div style={{ fontSize: "32px", marginBottom: "12px" }}>✅</div>
                 <h3 style={{ color: "#D4AF37", fontWeight: 700, marginBottom: "8px" }}>
-                  برنامه ایمیل شما باز شد
+                  پیام شما با موفقیت ارسال شد
                 </h3>
                 <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "20px" }}>
-                  اگر برنامه ایمیل باز نشد، می‌توانید مستقیم پیام را از طریق واتساپ یا شماره
-                  تلفن ارسال کنید.
+                  در اسرع وقت با شما تماس خواهیم گرفت. برای پیگیری فوری‌تر می‌توانید
+                  از طریق واتساپ یا شماره تلفن هم پیام بدهید.
                 </p>
                 <button
-                  onClick={() => setSubmitted(false)}
+                  type="button"
+                  onClick={resetForm}
                   style={{
                     background: "none",
                     border: "1px solid rgba(212,175,55,0.4)",
@@ -192,17 +231,57 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {status === "error" && (
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    style={{
+                      background: "rgba(220,38,38,0.08)",
+                      border: "1px solid rgba(220,38,38,0.35)",
+                      borderRadius: "8px",
+                      padding: "14px 16px",
+                      color: "#fca5a5",
+                      fontSize: "13px",
+                      lineHeight: 1.8,
+                    }}
+                  >
+                    {errorMessage}
+                  </div>
+                )}
+
                 <div>
                   <label style={labelStyle}>نام و نام خانوادگی</label>
-                  <input ref={nameRef} type="text" required style={inputStyle} />
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    required
+                    disabled={isSubmitting}
+                    style={inputStyle}
+                    className="contact-input"
+                    autoComplete="name"
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>شماره تماس</label>
-                  <input ref={phoneRef} type="tel" required style={inputStyle} />
+                  <input
+                    ref={phoneRef}
+                    type="tel"
+                    required
+                    disabled={isSubmitting}
+                    style={inputStyle}
+                    className="contact-input"
+                    autoComplete="tel"
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>موضوع پروژه</label>
-                  <input ref={subjectRef} type="text" style={inputStyle} />
+                  <input
+                    ref={subjectRef}
+                    type="text"
+                    disabled={isSubmitting}
+                    style={inputStyle}
+                    className="contact-input"
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>توضیحات</label>
@@ -210,28 +289,54 @@ export default function ContactPage() {
                     ref={messageRef}
                     required
                     rows={5}
+                    disabled={isSubmitting}
                     style={{ ...inputStyle, resize: "vertical" }}
+                    className="contact-input"
                     placeholder="توضیح مختصری از نیاز خود بنویسید..."
                   />
                 </div>
+
+                {/* Honeypot field — hidden from sighted and screen-reader users, bots fill it anyway */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "-9999px",
+                    width: "1px",
+                    height: "1px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <input
+                    ref={companyRef}
+                    type="text"
+                    name="company"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   style={{
-                    background: "linear-gradient(180deg,#efd98a,#D4AF37)",
+                    background: isSubmitting
+                      ? "rgba(212,175,55,0.35)"
+                      : "linear-gradient(180deg,#efd98a,#D4AF37)",
                     color: "#000",
                     fontWeight: 700,
                     padding: "14px",
                     borderRadius: "8px",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
                     fontSize: "15px",
                     marginTop: "8px",
                   }}
                 >
-                  ارسال پیام از طریق ایمیل
+                  {isSubmitting ? "در حال ارسال..." : "ارسال پیام"}
                 </button>
                 <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", textAlign: "center" }}>
-                  با کلیک روی دکمه، برنامه ایمیل شما با پیام آماده باز می‌شود.
+                  پیام شما مستقیماً برای تیم ما ارسال می‌شود.
                 </p>
               </form>
             )}
@@ -246,6 +351,24 @@ export default function ContactPage() {
             padding: 28px !important;
             gap: 32px !important;
           }
+        }
+
+        .contact-input {
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .contact-input::placeholder {
+          color: rgba(17, 17, 17, 0.4);
+        }
+
+        .contact-input:focus {
+          border-color: #D4AF37 !important;
+          box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
+        }
+
+        .contact-input:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
       `}</style>
     </div>
@@ -308,11 +431,11 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  background: "#151515",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "#ffffff",
+  border: "1px solid rgba(212,175,55,0.35)",
   borderRadius: "6px",
   padding: "12px 14px",
-  color: "#fff",
+  color: "#111111",
   fontSize: "14px",
   outline: "none",
 };

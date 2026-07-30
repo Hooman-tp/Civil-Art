@@ -1,8 +1,53 @@
+/**
+ * ══════════════════════════════════════════════════════════════════
+ * منبع واحد داده‌ی پروژه‌ها (Single Source of Truth)
+ * ══════════════════════════════════════════════════════════════════
+ *
+ * قانون طلایی (مهم‌ترین نکته):
+ * مقدار «slug» در هر آیتم زیر باید دقیقاً - حرف به حرف، بدون فاصله،
+ * بدون حروف فارسی - با نام پوشه‌ی متناظرش در مسیر زیر یکی باشد:
+ *
+ *     public/images/projects/{slug}/
+ *
+ * یعنی اگر بعداً نام یک پوشه را روی دیسک عوض کردی، تنها کاری که لازم
+ * است انجام بدهی این است: همین‌جا مقدار «slug» همان پروژه را با نام
+ * جدید پوشه جایگزین کنی. هیچ فایل دیگری در پروژه نیاز به تغییر ندارد،
+ * چون تمام مسیرهای عکس در کامپوننت‌ها از روی همین slug ساخته می‌شوند:
+ * `/images/projects/${slug}/cover.jpg` و `/images/projects/${slug}/1.jpg` و ...
+ *
+ * فیلدهای متنی زیر عمداً خالی گذاشته شده‌اند تا خودت متن واقعی هر
+ * پروژه را وارد کنی:
+ *   - name        → نام پروژه (مثلاً «مجتمع مسکونی آسمان»)
+ *   - year        → سال اجرا (مثلاً «۱۴۰۲»)
+ *   - tag         → دسته‌بندی کوتاه برای نمایش روی کارت (مثلاً «مسکونی · تهران»)
+ *   - shortDesc   → توضیح یک/دو خطی برای کارت پروژه
+ *   - fullDesc    → توضیح کامل برای صفحه‌ی جزئیات پروژه
+ *   - specs       → آرایه‌ای از مشخصات فنی، هرکدام به شکل:
+ *                   { label: "زیربنا", value: "۴۸,۰۰۰ متر مربع" }
+ *
+ * فیلد galleryCount را برابر با تعداد واقعی عکس‌هایی که داخل هر پوشه
+ * ریختی قرار بده (بدون احتساب cover.jpg).
+ *
+ * اگر بعداً به دسته‌بندی جدیدی نیاز داشتی، فقط یک مقدار جدید به
+ * union type «ProjectCategory» زیر اضافه کن.
+ * ══════════════════════════════════════════════════════════════════
+ */
+
 export type ProjectSpec = { label: string; value: string };
+
+export type ProjectCategory =
+  | "مسکونی"
+  | "ویلا"
+  | "زیرساخت"
+  | "صنعتی"
+  | "آب و فاضلاب"
+  | "طراحی داخلی"
+  | "محوطه‌سازی"
+  | "تزئینات کلاسیک";
 
 export type Project = {
   slug: string;
-  category: "مسکونی" | "زیرساخت" | "صنعتی" | "آب و فاضلاب";
+  category: ProjectCategory;
   tag: string;
   name: string;
   year: string;
@@ -13,158 +58,358 @@ export type Project = {
 };
 
 export const PROJECTS: Project[] = [
+  // ─────────────────────────────────────────────
+  // پروژه‌های قبلی که پوشه‌ی عکس واقعی برایشان پیدا شد (اسلاگ اصلاح شد)
+  // ─────────────────────────────────────────────
   {
-    slug: "residential-asman",
+    slug: "residential-asman-arta",
     category: "مسکونی",
-    tag: "مسکونی · تهران",
-    name: "مجتمع مسکونی آسمان",
-    year: "۱۴۰۲",
-    shortDesc: "طراحی سازه ۲۴ طبقه با سیستم دوگانه قاب خمشی و دیوار برشی.",
-    fullDesc:
-      "مجتمع مسکونی آسمان یکی از بلندترین پروژه‌های مسکونی اجراشده توسط Civil-Art است. طراحی سازه‌ای این برج ۲۴ طبقه بر پایه‌ی سیستم دوگانه‌ی قاب خمشی بتنی و دیوار برشی انجام شد تا هم مقاومت لرزه‌ای بالا و هم انعطاف معماری در چیدمان واحدها فراهم شود. مساحت کل پروژه به ۴۸,۰۰۰ متر مربع می‌رسد و شامل امکانات رفاهی مانند استخر، سالن ورزشی و پارکینگ چندطبقه است.",
-    specs: [
-      { label: "مساحت", value: "۴۸,۰۰۰ متر مربع" },
-      { label: "تعداد طبقات", value: "۲۴ طبقه" },
-      { label: "سیستم سازه‌ای", value: "قاب خمشی + دیوار برشی" },
-      { label: "مدت اجرا", value: "۲۸ ماه" },
-    ],
-    galleryCount: 6,
-  },
-  {
-    slug: "bridge-amirkabir",
-    category: "زیرساخت",
-    tag: "زیرساخت · اصفهان",
-    name: "پل کابلی امیرکبیر",
-    year: "۱۴۰۱",
-    shortDesc: "طراحی و نظارت اجرای پل با دهانه ۱۴۰ متر، کمربند پیاده‌رو و مسیر دوچرخه.",
-    fullDesc:
-      "پل کابلی امیرکبیر با هدف کاهش بار ترافیکی محور شرقی اصفهان طراحی و اجرا شد. این پل با دهانه‌ی اصلی ۱۴۰ متر، از سیستم کابلی مدرن با دکل‌های فولادی بهره می‌برد و علاوه بر مسیر سواره، یک کمربند پیاده‌رو و مسیر ویژه‌ی دوچرخه را نیز در طراحی خود جای داده است.",
-    specs: [
-      { label: "طول دهانه اصلی", value: "۱۴۰ متر" },
-      { label: "نوع سازه", value: "پل کابلی فولادی" },
-      { label: "عرض عرشه", value: "۲۲ متر" },
-      { label: "مدت اجرا", value: "۲۲ ماه" },
-    ],
-    galleryCount: 6,
-  },
-  {
-    slug: "water-treatment-kermanshah",
-    category: "آب و فاضلاب",
-    tag: "آب · کرمانشاه",
-    name: "تصفیه‌خانه آب شهری",
-    year: "۱۴۰۰",
-    shortDesc: "طراحی تصفیه‌خانه با ظرفیت ۱۵۰,۰۰۰ مترمکعب در شبانه‌روز.",
-    fullDesc:
-      "این تصفیه‌خانه برای تأمین پایدار آب شرب بخش قابل‌توجهی از جمعیت شهر کرمانشاه طراحی شده است. ظرفیت پردازش روزانه به ۱۵۰,۰۰۰ مترمکعب می‌رسد و از فرآیندهای مدرن ته‌نشینی، فیلتراسیون چندلایه و گندزدایی بهره می‌برد.",
-    specs: [
-      { label: "ظرفیت روزانه", value: "۱۵۰,۰۰۰ مترمکعب" },
-      { label: "نوع فرآیند", value: "ته‌نشینی + فیلتراسیون چندلایه" },
-      { label: "مساحت سایت", value: "۱۲ هکتار" },
-      { label: "مدت اجرا", value: "۳۴ ماه" },
-    ],
-    galleryCount: 6,
-  },
-  {
-    slug: "industrial-razi",
-    category: "صنعتی",
-    tag: "صنعتی · شیراز",
-    name: "مجتمع صنعتی رازی",
-    year: "۱۴۰۱",
-    shortDesc: "طراحی سازه سوله و ساختمان اداری با زیربنای ۶۰,۰۰۰ متر مربع.",
-    fullDesc:
-      "مجتمع صنعتی رازی شامل چند سوله‌ی تولیدی با دهانه‌های بزرگ و یک ساختمان اداری مستقل است. طراحی سازه‌ای سوله‌ها بر اساس نیاز به دهانه‌های وسیع بدون ستون میانی و امکان جابه‌جایی جرثقیل سقفی سنگین انجام شد.",
-    specs: [
-      { label: "زیربنا", value: "۶۰,۰۰۰ متر مربع" },
-      { label: "نوع سازه", value: "اسکلت فلزی پیش‌ساخته" },
-      { label: "ظرفیت جرثقیل سقفی", value: "۲۰ تن" },
-      { label: "مدت اجرا", value: "۱۸ ماه" },
-    ],
-    galleryCount: 6,
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
   },
   {
     slug: "tower-mashhad",
     category: "مسکونی",
-    tag: "مسکونی · مشهد",
-    name: "برج مروارید شرق",
-    year: "۱۴۰۳",
-    shortDesc: "طراحی معماری و سازه‌ای برج ۱۸ طبقه با نمای شیشه‌ای دوجداره.",
-    fullDesc:
-      "برج مروارید شرق با ترکیبی از طراحی معماری مدرن و سیستم نمای شیشه‌ای دوجداره، یکی از پروژه‌های شاخص مسکونی مشهد است. سیستم هوشمند مدیریت انرژی این برج مصرف برق بخش‌های مشترک را به‌طور قابل‌توجهی کاهش می‌دهد.",
-    specs: [
-      { label: "تعداد طبقات", value: "۱۸ طبقه" },
-      { label: "نوع نما", value: "شیشه‌ای دوجداره" },
-      { label: "سیستم سازه‌ای", value: "قاب بتنی + میراگر لرزه‌ای" },
-      { label: "مدت اجرا", value: "۲۶ ماه" },
-    ],
-    galleryCount: 6,
-  },
-  {
-    slug: "intersection-karaj",
-    category: "زیرساخت",
-    tag: "زیرساخت · کرج",
-    name: "تقاطع غیرهم‌سطح آزادی",
-    year: "۱۴۰۲",
-    shortDesc: "طراحی و اجرای تقاطع غیرهم‌سطح برای کاهش بار ترافیکی محور اصلی شهر.",
-    fullDesc:
-      "این تقاطع غیرهم‌سطح در یکی از پرترافیک‌ترین نقاط شهر کرج طراحی و اجرا شد. هدف اصلی پروژه کاهش زمان انتظار خودروها و حذف تقاطع هم‌سطح پرتصادف بود.",
-    specs: [
-      { label: "طول رمپ‌ها", value: "۸۵۰ متر" },
-      { label: "نوع سازه", value: "پل بتنی پیش‌تنیده" },
-      { label: "کاهش زمان تردد", value: "تا ۴۰٪" },
-      { label: "مدت اجرا", value: "۱۶ ماه" },
-    ],
-    galleryCount: 6,
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
   },
   {
     slug: "warehouse-central",
     category: "صنعتی",
-    tag: "صنعتی · تهران",
-    name: "سوله انبار مرکزی",
-    year: "۱۴۰۲",
-    shortDesc: "طراحی و اجرای سوله انبار با سیستم قفسه‌بندی صنعتی مرتفع.",
-    fullDesc:
-      "سوله انبار مرکزی برای یک شرکت پخش و توزیع طراحی شد که نیاز به ارتفاع مفید بالا برای قفسه‌بندی صنعتی داشت.",
-    specs: [
-      { label: "زیربنا", value: "۱۸,۰۰۰ متر مربع" },
-      { label: "ارتفاع مفید", value: "۱۲ متر" },
-      { label: "نوع سازه", value: "اسکلت فلزی" },
-      { label: "مدت اجرا", value: "۱۰ ماه" },
-    ],
-    galleryCount: 6,
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "water-treatment-kermanshah",
+    category: "آب و فاضلاب",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
   },
   {
     slug: "pump-station-south",
     category: "آب و فاضلاب",
-    tag: "آب و فاضلاب · اهواز",
-    name: "ایستگاه پمپاژ جنوب",
-    year: "۱۴۰۱",
-    shortDesc: "طراحی ایستگاه پمپاژ فاضلاب برای شبکه جمع‌آوری منطقه جنوبی شهر.",
-    fullDesc:
-      "ایستگاه پمپاژ جنوب بخشی از طرح جامع جمع‌آوری فاضلاب شهری است که با هدف انتقال فاضلاب مناطق کم‌ارتفاع به تصفیه‌خانه‌ی مرکزی طراحی شد.",
-    specs: [
-      { label: "ظرفیت پمپاژ", value: "۴۵۰ لیتر بر ثانیه" },
-      { label: "تعداد پمپ", value: "۴ پمپ (۲ پشتیبان)" },
-      { label: "عمق ایستگاه", value: "۹ متر" },
-      { label: "مدت اجرا", value: "۱۴ ماه" },
-    ],
-    galleryCount: 6,
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
   },
   {
     slug: "villa-garden",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+
+  // ─────────────────────────────────────────────
+  // ⚠️ این ۳ مورد در پوشه‌های فعلی پیدا نشدند
+  // اگر عکس واقعی برایشان نداری، این ۳ آیتم را حذف کن
+  // ─────────────────────────────────────────────
+  {
+    slug: "bridge-amirkabir",
+    category: "زیرساخت",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "industrial-razi",
+    category: "صنعتی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "intersection-karaj",
+    category: "زیرساخت",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+
+  // ─────────────────────────────────────────────
+  // پروژه‌های جدید (بر اساس پوشه‌های واقعی)
+  // ─────────────────────────────────────────────
+  {
+    slug: "ceiling-fresco-baroque-amirkabir",
+    category: "تزئینات کلاسیک",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "contemporary-luxury-interior-karaj",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "modern-luxury-interior-anzali",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "modern-luxury-interior-tehran",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "modern-luxury-kitchen",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "ultra-luxury-interior",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "classic-plastering-gold-leaf",
+    category: "تزئینات کلاسیک",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "japandi-warm-minimalism",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "interior-design",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "classic-interior-design",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "roof-garden",
+    category: "محوطه‌سازی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "modern-minimal-luxury",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "material-mood-board",
+    category: "طراحی داخلی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "yard-landscaping",
+    category: "محوطه‌سازی",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "residential-apartment-facade",
     category: "مسکونی",
-    tag: "مسکونی · کرج",
-    name: "ویلای باغ رویا",
-    year: "۱۴۰۳",
-    shortDesc: "طراحی معماری و اجرای ویلای مسکونی با محوطه‌سازی و استخر اختصاصی.",
-    fullDesc:
-      "ویلای باغ رویا با تمرکز بر هماهنگی طراحی داخلی و محوطه‌ی طبیعی اطراف ساخته شد. این پروژه شامل استخر اختصاصی، فضای سبز طراحی‌شده و سیستم روشنایی محوطه است.",
-    specs: [
-      { label: "زیربنا", value: "۶۵۰ متر مربع" },
-      { label: "مساحت زمین", value: "۲,۲۰۰ متر مربع" },
-      { label: "امکانات", value: "استخر + محوطه‌سازی" },
-      { label: "مدت اجرا", value: "۱۲ ماه" },
-    ],
-    galleryCount: 6,
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-facade",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-01",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-03",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-f",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-under-construction-01",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "villa-under-construction-02",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
+  },
+  {
+    slug: "private-villa",
+    category: "ویلا",
+    tag: "",
+    name: "",
+    year: "",
+    shortDesc: "",
+    fullDesc: "",
+    specs: [],
+    galleryCount: 0,
   },
 ];
 
