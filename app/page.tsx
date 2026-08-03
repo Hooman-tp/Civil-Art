@@ -10,6 +10,16 @@ import ProjectCard from "../components/ProjectCard";
 import { getFeaturedProjects } from "../lib/projectsData";
 import { getProjectCover } from "../lib/getProjectImages";
 
+/**
+ * بافت ظریف «کاغذ نقشه‌کشی مهندسی» (blueprint grid) به‌عنوان امضای
+ * بصری این صفحه — به‌جای پس‌زمینه‌ی تخت و یک‌دست قبلی، خطوط طلاییِ
+ * بسیار کم‌رنگ که به هویت «مهندسی» شرکت اشاره می‌کند، بدون اینکه با
+ * محتوا رقابت کند.
+ */
+const BLUEPRINT_GRID = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><path d="M48 0.5H0V48" fill="none" stroke="rgba(212,175,55,0.07)" stroke-width="1"/></svg>'
+)}")`;
+
 export default function Home() {
   const featuredProjects = getFeaturedProjects(6);
 
@@ -19,12 +29,14 @@ export default function Home() {
       <Hero />
       <QuickAccessCTA />
 
-      {/* ── آمار سریع (مشکی) ── */}
+      {/* ── آمار سریع (مشکی + بافت نقشه‌کشی) ── */}
       <section
         style={{
           background: "#0b0b0d",
+          backgroundImage: BLUEPRINT_GRID,
+          backgroundRepeat: "repeat",
           borderBottom: "1px solid rgba(212,175,55,0.12)",
-          padding: "60px 24px",
+          padding: "70px 24px",
         }}
       >
         <div
@@ -32,15 +44,14 @@ export default function Home() {
             maxWidth: "1100px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-            gap: "32px",
-            textAlign: "center",
+            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+            gap: "20px",
           }}
         >
-          <Stat value="+۱۲۰" label="پروژه تکمیل شده" />
-          <Stat value="+۱۸" label="سال تجربه" />
-          <Stat value="+۶۰" label="نیروی متخصص" />
-          <Stat value="+۴۰" label="کارفرمای دائمی" />
+          <StatCard icon={<IconBuilding />} value="+۱۲۰" label="پروژه تکمیل شده" />
+          <StatCard icon={<IconMedal />} value="+۱۸" label="سال تجربه" />
+          <StatCard icon={<IconTeam />} value="+۶۰" label="نیروی متخصص" />
+          <StatCard icon={<IconHandshake />} value="+۴۰" label="کارفرمای دائمی" />
         </div>
       </section>
 
@@ -49,7 +60,7 @@ export default function Home() {
         style={{
           background: "#ffffff",
           color: "#111",
-          padding: "100px 24px",
+          padding: "110px 24px",
           maxWidth: "1100px",
           margin: "0 auto",
           textAlign: "center",
@@ -65,7 +76,7 @@ export default function Home() {
             fontSize: "16px",
             lineHeight: 2,
             maxWidth: "750px",
-            margin: "0 auto 32px",
+            margin: "0 auto 36px",
           }}
         >
           Civil-Art یک شرکت فنی و مهندسی فعال در زمینه طراحی، نظارت، مدیریت و
@@ -75,6 +86,9 @@ export default function Home() {
         <Link
           href="/about"
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
             color: "#B8912E",
             textDecoration: "none",
             fontSize: "14px",
@@ -83,17 +97,25 @@ export default function Home() {
             paddingBottom: "4px",
           }}
         >
-          بیشتر درباره ما بخوانید ←
+          بیشتر درباره ما بخوانید
+          <span aria-hidden="true">←</span>
         </Link>
       </section>
 
       {/* ── روند همکاری (سفید) ── */}
       <ProcessTimeline />
 
-      {/* ── پیش‌نمایش خدمات (مشکی) ── */}
-      <section style={{ background: "#0b0b0d", padding: "100px 24px" }}>
+      {/* ── پیش‌نمایش خدمات (مشکی + بافت نقشه‌کشی) ── */}
+      <section
+        style={{
+          background: "#0b0b0d",
+          backgroundImage: BLUEPRINT_GRID,
+          backgroundRepeat: "repeat",
+          padding: "110px 24px",
+        }}
+      >
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "50px" }}>
+          <div style={{ textAlign: "center", marginBottom: "56px" }}>
             <Eyebrow text="خدمات تخصصی" />
             <h2 style={{ fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 900 }}>
               آنچه ارائه می‌دهیم
@@ -103,28 +125,19 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
-              gap: "1px",
-              background: "rgba(212,175,55,0.1)",
+              gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+              gap: "24px",
             }}
           >
-            <ServiceCard icon="🏗️" title="طراحی ساختمان های ویلایی - مسکونی-اداری و تجاری" />
-            <ServiceCard icon="📋" title="نظارت کارگاهی" />
+            <ServiceCard
+              icon={<IconBuilding />}
+              title="طراحی ساختمان های ویلایی - مسکونی-اداری و تجاری"
+            />
+            <ServiceCard icon={<IconClipboardCheck />} title="نظارت کارگاهی" />
           </div>
 
-          <div style={{ textAlign: "center", marginTop: "40px" }}>
-            <Link
-              href="/services"
-              style={{
-                display: "inline-block",
-                border: "1px solid rgba(212,175,55,0.4)",
-                color: "#D4AF37",
-                padding: "12px 32px",
-                borderRadius: "999px",
-                textDecoration: "none",
-                fontSize: "14px",
-              }}
-            >
+          <div style={{ textAlign: "center", marginTop: "48px" }}>
+            <Link href="/services" className="btn-outline-gold">
               مشاهده همه خدمات
             </Link>
           </div>
@@ -132,9 +145,9 @@ export default function Home() {
       </section>
 
       {/* ── پیش‌نمایش پروژه‌ها (مشکی) ── */}
-      <section style={{ background: "#050505", padding: "100px 24px" }}>
+      <section style={{ background: "#050505", padding: "110px 24px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "50px" }}>
+          <div style={{ textAlign: "center", marginBottom: "56px" }}>
             <Eyebrow text="نمونه کارها" />
             <h2 style={{ fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 900 }}>
               پروژه‌های برجسته
@@ -160,19 +173,8 @@ export default function Home() {
             ))}
           </div>
 
-          <div style={{ textAlign: "center", marginTop: "40px" }}>
-            <Link
-              href="/projects"
-              style={{
-                display: "inline-block",
-                border: "1px solid rgba(212,175,55,0.4)",
-                color: "#D4AF37",
-                padding: "12px 32px",
-                borderRadius: "999px",
-                textDecoration: "none",
-                fontSize: "14px",
-              }}
-            >
+          <div style={{ textAlign: "center", marginTop: "48px" }}>
+            <Link href="/projects" className="btn-outline-gold">
               مشاهده همه پروژه‌ها
             </Link>
           </div>
@@ -188,12 +190,14 @@ export default function Home() {
       {/* ── خبرنامه (طلایی توپر) ── */}
       <NewsletterSignup />
 
-      {/* ── CTA پایانی (مشکی) ── */}
+      {/* ── CTA پایانی (مشکی + بافت نقشه‌کشی) ── */}
       <section
         style={{
           background: "#0b0b0d",
+          backgroundImage: BLUEPRINT_GRID,
+          backgroundRepeat: "repeat",
           borderTop: "1px solid rgba(212,175,55,0.15)",
-          padding: "100px 24px",
+          padding: "110px 24px",
           textAlign: "center",
         }}
       >
@@ -222,10 +226,22 @@ export default function Home() {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function StatCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <div>
-      <div style={{ color: "#D4AF37", fontSize: "clamp(28px,4vw,42px)", fontWeight: 900 }}>{value}</div>
+    <div
+      className="stat-card"
+      style={{
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(212,175,55,0.15)",
+        borderRadius: "16px",
+        padding: "28px 20px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ color: "#D4AF37", marginBottom: "12px", display: "flex", justifyContent: "center" }}>
+        {icon}
+      </div>
+      <div style={{ color: "#fff", fontSize: "clamp(26px,3.6vw,38px)", fontWeight: 900 }}>{value}</div>
       <div style={{ color: "rgba(255,255,255,0.5)", marginTop: "6px", fontSize: "13px" }}>{label}</div>
     </div>
   );
@@ -251,11 +267,91 @@ function EyebrowLight({ text }: { text: string }) {
   );
 }
 
-function ServiceCard({ icon, title }: { icon: string; title: string }) {
+function ServiceCard({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div style={{ background: "#0b0b0d", padding: "32px 22px", textAlign: "center" }}>
-      <div style={{ fontSize: "28px", marginBottom: "14px" }}>{icon}</div>
-      <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{title}</h3>
+    <div
+      className="service-card"
+      style={{
+        background: "#111113",
+        border: "1px solid rgba(212,175,55,0.15)",
+        borderRadius: "18px",
+        padding: "40px 28px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: 60,
+          height: 60,
+          margin: "0 auto 22px",
+          borderRadius: "14px",
+          background: "rgba(212,175,55,0.08)",
+          border: "1px solid rgba(212,175,55,0.3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#D4AF37",
+        }}
+      >
+        {icon}
+      </div>
+      <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", lineHeight: 1.7 }}>{title}</h3>
     </div>
+  );
+}
+
+/* ── آیکون‌های خطی سفارشی (بدون ایموجی، بدون وابستگی خارجی) ── */
+
+function IconBuilding() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M4 21V7L12 3L20 7V21" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 21H21.5" strokeLinecap="round" />
+      <path d="M9 21V14H15V21" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 10H8.51M15.5 10H15.51" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconClipboardCheck() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="5" y="4" width="14" height="17" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 12.5L11 14.5L15 10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconMedal() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <circle cx="12" cy="9" r="6" />
+      <path d="M9 14.5L7 22L12 19L17 22L15 14.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconTeam() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 21V19C3 16.7909 5.68629 15 9 15C12.3137 15 15 16.7909 15 19V21" strokeLinecap="round" />
+      <circle cx="17" cy="8" r="2.5" />
+      <path d="M15.5 15.2C18.2 15.6 20 17.2 20 19V21" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconHandshake() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M2 12L6 8L10 11L14 7L16 9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 8L2 12L5 16L9 12" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 9L20 5L22 8L18 13L14 10" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11L12.5 13.5" strokeLinecap="round" />
+    </svg>
   );
 }

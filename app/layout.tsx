@@ -8,7 +8,7 @@ import StructuredData from "../components/StructuredData";
 import WhatsAppButton from "../components/WhatsAppButton";
 import SkipToContent from "../components/SkipToContent";
 import { Vazirmatn } from "next/font/google";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 const vazir = Vazirmatn({ subsets: ["arabic"] });
 
@@ -40,6 +40,19 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+};
+
+/*
+  نکته مهم (رفع باگ): بدون این export، مرورگر موبایل صفحه را با
+  عرض دسکتاپ (حدود 980px) رندر کرده و بعد کوچک می‌کند تا در صفحه
+  جا شود — دقیقاً همان چیزی که باعث می‌شد سایت در گوشی ریز و
+  فشرده دیده شود، هرچند در ویندوز مشکلی نداشت. این export به
+  مرورگر موبایل می‌گوید عرض واقعی دستگاه را برای رندر استفاده کند.
+*/
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
