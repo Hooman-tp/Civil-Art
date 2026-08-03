@@ -3,33 +3,22 @@
  * منبع واحد داده‌ی پروژه‌ها (Single Source of Truth)
  * ══════════════════════════════════════════════════════════════════
  *
- * قانون طلایی (مهم‌ترین نکته):
- * مقدار «slug» در هر آیتم زیر باید دقیقاً - حرف به حرف، بدون فاصله،
- * بدون حروف فارسی - با نام پوشه‌ی متناظرش در مسیر زیر یکی باشد:
+ * قانون طلایی:
+ * مقدار «slug» در هر آیتم زیر باید دقیقاً - حرف به حرف - با نام پوشه‌ی
+ * متناظرش در مسیر زیر یکی باشد:
  *
  *     public/images/projects/{slug}/
  *
- * یعنی اگر بعداً نام یک پوشه را روی دیسک عوض کردی، تنها کاری که لازم
- * است انجام بدهی این است: همین‌جا مقدار «slug» همان پروژه را با نام
- * جدید پوشه جایگزین کنی. هیچ فایل دیگری در پروژه نیاز به تغییر ندارد،
- * چون تمام مسیرهای عکس در کامپوننت‌ها از روی همین slug ساخته می‌شوند:
- * `/images/projects/${slug}/cover.jpg` و `/images/projects/${slug}/1.jpg` و ...
+ * چون همین «slug» هم برای ساخت مسیر عکس‌ها و هم برای آدرس صفحه‌ی
+ * جزئیات (/projects/{slug}) استفاده می‌شود، هرگز نباید فاصله یا
+ * کاراکتر فارسی داشته باشد.
  *
- * فیلدهای متنی زیر عمداً خالی گذاشته شده‌اند تا خودت متن واقعی هر
- * پروژه را وارد کنی:
- *   - name        → نام پروژه (مثلاً «مجتمع مسکونی آسمان»)
- *   - year        → سال اجرا (مثلاً «۱۴۰۲»)
- *   - tag         → دسته‌بندی کوتاه برای نمایش روی کارت (مثلاً «مسکونی · تهران»)
- *   - shortDesc   → توضیح یک/دو خطی برای کارت پروژه
- *   - fullDesc    → توضیح کامل برای صفحه‌ی جزئیات پروژه
- *   - specs       → آرایه‌ای از مشخصات فنی، هرکدام به شکل:
- *                   { label: "زیربنا", value: "۴۸,۰۰۰ متر مربع" }
+ * فیلدهای متنی (name, year, tag, shortDesc, fullDesc, specs) عمداً
+ * خالی گذاشته شده‌اند تا خودت متن واقعی هر پروژه را وارد کنی.
  *
- * فیلد galleryCount را برابر با تعداد واقعی عکس‌هایی که داخل هر پوشه
- * ریختی قرار بده (بدون احتساب cover.jpg).
- *
- * اگر بعداً به دسته‌بندی جدیدی نیاز داشتی، فقط یک مقدار جدید به
- * union type «ProjectCategory» زیر اضافه کن.
+ * عکس‌های هر پروژه به‌صورت خودکار از روی فایل‌های داخل پوشه‌اش خوانده
+ * می‌شوند (نگاه کن به lib/getProjectImages.ts). فقط عکس را داخل پوشه
+ * بریز، نیازی به نوشتن دستی تعداد عکس نیست.
  * ══════════════════════════════════════════════════════════════════
  */
 
@@ -39,9 +28,9 @@ export type ProjectCategory =
   | "مسکونی"
   | "ویلا"
   | "زیرساخت"
-  | "صنعتی"
-  | "آب و فاضلاب"
-  | "طراحی داخلی"
+  | "اداری"
+  | "نقاشی و پتینه و تکسچر"
+  | "دیزاین داخلی"
   | "محوطه‌سازی"
   | "تزئینات کلاسیک";
 
@@ -54,365 +43,124 @@ export type Project = {
   shortDesc: string;
   fullDesc: string;
   specs: ProjectSpec[];
-  galleryCount: number;
 };
 
 export const PROJECTS: Project[] = [
   // ─────────────────────────────────────────────
-  // پروژه‌های قبلی که پوشه‌ی عکس واقعی برایشان پیدا شد (اسلاگ اصلاح شد)
+  // مسکونی
   // ─────────────────────────────────────────────
-  {
-    slug: "residential-asman-arta",
-    category: "مسکونی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "tower-mashhad",
-    category: "مسکونی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "warehouse-central",
-    category: "صنعتی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "water-treatment-kermanshah",
-    category: "آب و فاضلاب",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "pump-station-south",
-    category: "آب و فاضلاب",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-garden",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
+  { slug: "tower-mashhad", category: "مسکونی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "residential-apartment-facade", category: "مسکونی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
 
   // ─────────────────────────────────────────────
-  // ⚠️ این ۳ مورد در پوشه‌های فعلی پیدا نشدند
-  // اگر عکس واقعی برایشان نداری، این ۳ آیتم را حذف کن
+  // اداری
+  // ⚠️ اسم پوشه فعلاً اندونزیایی است (Gedung-perkantoran-arta)
+  // پیشنهاد بعدی: office-building-arta
   // ─────────────────────────────────────────────
-  {
-    slug: "bridge-amirkabir",
-    category: "زیرساخت",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "industrial-razi",
-    category: "صنعتی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "intersection-karaj",
-    category: "زیرساخت",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
+  { slug: "Gedung-perkantoran-arta", category: "اداری", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
 
   // ─────────────────────────────────────────────
-  // پروژه‌های جدید (بر اساس پوشه‌های واقعی)
+  // ویلا
+  // ⚠️ اسم پوشه‌ی Vila-pribadi-di-Mazandaran فعلاً اندونزیایی است
+  // پیشنهاد بعدی: private-villa-mazandaran
   // ─────────────────────────────────────────────
+  { slug: "villa-garden", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "private-villa", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-facade", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-01", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-02", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-03", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-under-construction-01", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "villa-under-construction-02", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "Vila-pribadi-di-Mazandaran", category: "ویلا", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+
+  // ─────────────────────────────────────────────
+  // دیزاین داخلی
+  // ⚠️ اسم پوشه‌ی Desain-interior-vila-pribadi فعلاً اندونزیایی است
+  // پیشنهاد بعدی: villa-interior-design
+  // ─────────────────────────────────────────────
+  { slug: "interior-design", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "classic-interior-design", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "contemporary-luxury-interior-karaj", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "modern-luxury-interior-tehran", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
   {
-    slug: "ceiling-fresco-baroque-amirkabir",
-    category: "تزئینات کلاسیک",
+    // ⚠️ این پوشه هنوز فاصله دارد؛ باید رنیم شود به همین اسم دقیقاً:
+    // modern-luxury-interior-mani-tejarat-anzali
+    slug: "modern-luxury-interior-mani-tejarat-anzali",
+    category: "دیزاین داخلی",
     tag: "",
     name: "",
     year: "",
     shortDesc: "",
     fullDesc: "",
     specs: [],
-    galleryCount: 0,
   },
-  {
-    slug: "contemporary-luxury-interior-karaj",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "modern-luxury-interior-anzali",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "modern-luxury-interior-tehran",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "modern-luxury-kitchen",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "ultra-luxury-interior",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "classic-plastering-gold-leaf",
-    category: "تزئینات کلاسیک",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "japandi-warm-minimalism",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "interior-design",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "classic-interior-design",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "roof-garden",
-    category: "محوطه‌سازی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "modern-minimal-luxury",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "material-mood-board",
-    category: "طراحی داخلی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "yard-landscaping",
-    category: "محوطه‌سازی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "residential-apartment-facade",
-    category: "مسکونی",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-facade",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-01",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-03",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-f",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-under-construction-01",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "villa-under-construction-02",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
-  {
-    slug: "private-villa",
-    category: "ویلا",
-    tag: "",
-    name: "",
-    year: "",
-    shortDesc: "",
-    fullDesc: "",
-    specs: [],
-    galleryCount: 0,
-  },
+  { slug: "modern-luxury-kitchen", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "modern-minimal-luxury", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "ultra-luxury-interior", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "japandi-warm-minimalism", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "material-mood-board", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "Desain-interior-vila-pribadi", category: "دیزاین داخلی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+
+  // ─────────────────────────────────────────────
+  // محوطه‌سازی
+  // ─────────────────────────────────────────────
+  { slug: "roof-garden", category: "محوطه‌سازی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "yard-landscaping", category: "محوطه‌سازی", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+
+  // ─────────────────────────────────────────────
+  // تزئینات کلاسیک
+  // ⚠️ پوشه‌ی زیر هنوز فاصله دارد و اسمش اندونزیایی هم هست؛
+  // باید رنیم شود به همین اسم دقیقاً: ceiling-fresco-baroque-amirkabir
+  // ─────────────────────────────────────────────
+  { slug: "ceiling-fresco-baroque-amirkabir", category: "تزئینات کلاسیک", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+  { slug: "classic-plastering-gold-leaf", category: "تزئینات کلاسیک", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
+
+  // ─────────────────────────────────────────────
+  // نقاشی و پتینه و تکسچر
+  // ⚠️ اسم پوشه فعلاً اندونزیایی است (Pengecatan-profesional)
+  // پیشنهاد بعدی: professional-painting
+  // ─────────────────────────────────────────────
+  { slug: "Pengecatan-profesional", category: "نقاشی و پتینه و تکسچر", tag: "", name: "", year: "", shortDesc: "", fullDesc: "", specs: [] },
 ];
 
 export function getProjectBySlug(slug: string): Project | undefined {
   return PROJECTS.find((p) => p.slug === slug);
+}
+
+/**
+ * برای پیش‌نمایش «پروژه‌های برجسته» در صفحه‌ی اصلی، به‌جای برداشتن چند
+ * آیتم اول آرایه (که چون پروژه‌ها بر اساس دسته‌بندی گروه‌بندی شده‌اند
+ * فقط یک دسته را نشان می‌داد)، این تابع به‌صورت چرخشی از هر دسته‌بندی
+ * یک پروژه انتخاب می‌کند تا در پیش‌نمایش، تنوع دسته‌ها حفظ شود.
+ */
+export function getFeaturedProjects(count: number): Project[] {
+  const byCategory = new Map<ProjectCategory, Project[]>();
+  for (const project of PROJECTS) {
+    const list = byCategory.get(project.category) ?? [];
+    list.push(project);
+    byCategory.set(project.category, list);
+  }
+
+  const categories = Array.from(byCategory.keys());
+  const result: Project[] = [];
+  let round = 0;
+
+  while (result.length < count) {
+    let addedInThisRound = false;
+
+    for (const category of categories) {
+      const project = byCategory.get(category)?.[round];
+      if (project) {
+        result.push(project);
+        addedInThisRound = true;
+        if (result.length === count) break;
+      }
+    }
+
+    if (!addedInThisRound) break;
+    round++;
+  }
+
+  return result;
 }

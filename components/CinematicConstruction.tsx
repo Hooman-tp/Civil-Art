@@ -144,10 +144,24 @@ export default function CinematicConstruction() {
       applyActiveStep(step);
     };
 
+    /*
+      رفع باگ «سیاه می‌مونه تا اسکرول کنی»:
+      قبلاً update() فقط موقع mount (که هنوز readyState ویدیو کمتر
+      از ۲ است) و روی هر scroll صدا زده می‌شد. یعنی اولین باری که
+      واقعاً currentTime روی یک فریم معتبر ست می‌شد، دقیقاً هم‌زمان
+      با اولین اسکرول کاربر بود — نه زودتر. الان به‌محض اینکه ویدیو
+      به readyState=2 برسه (رویداد loadeddata)، بدون نیاز به اسکرول
+      کاربر، update() یک‌بار دیگر صدا زده می‌شود تا فریم بلافاصله
+      با موقعیت فعلی اسکرول همگام شود.
+    */
     window.addEventListener("scroll", update, { passive: true });
+    video.addEventListener("loadeddata", update);
     update();
 
-    return () => window.removeEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      video.removeEventListener("loadeddata", update);
+    };
   }, []);
 
   return (

@@ -127,7 +127,7 @@ export default function ContactPage() {
 
         <p
           style={{
-            color: "rgba(255,255,255,0.6)",
+            color: "#ffffff",
             fontSize: "17px",
             lineHeight: 2,
             maxWidth: "700px",
@@ -172,7 +172,7 @@ export default function ContactPage() {
             </h2>
             <p
               style={{
-                color: "rgba(255,255,255,0.5)",
+                color: "#ffffff",
                 fontSize: "14px",
                 lineHeight: 1.9,
                 marginBottom: "32px",
@@ -209,7 +209,7 @@ export default function ContactPage() {
                 <h3 style={{ color: "#D4AF37", fontWeight: 700, marginBottom: "8px" }}>
                   پیام شما با موفقیت ارسال شد
                 </h3>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "20px" }}>
+                <p style={{ color: "#ffffff", fontSize: "14px", marginBottom: "20px" }}>
                   در اسرع وقت با شما تماس خواهیم گرفت. برای پیگیری فوری‌تر می‌توانید
                   از طریق واتساپ یا شماره تلفن هم پیام بدهید.
                 </p>
@@ -335,7 +335,7 @@ export default function ContactPage() {
                 >
                   {isSubmitting ? "در حال ارسال..." : "ارسال پیام"}
                 </button>
-                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", textAlign: "center" }}>
+                <p style={{ fontSize: "12px", color: "#ffffff", textAlign: "center" }}>
                   پیام شما مستقیماً برای تیم ما ارسال می‌شود.
                 </p>
               </form>
@@ -410,12 +410,12 @@ function ContactRow({
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", textDecoration: "none" }}
+            style={{ fontSize: "14px", color: "#ffffff", textDecoration: "none" }}
           >
             {value}
           </a>
         ) : (
-          <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)" }}>{value}</div>
+          <div style={{ fontSize: "14px", color: "#ffffff" }}>{value}</div>
         )}
       </div>
     </div>
@@ -425,7 +425,7 @@ function ContactRow({
 const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "12px",
-  color: "rgba(255,255,255,0.5)",
+  color: "#ffffff",
   marginBottom: "6px",
 };
 

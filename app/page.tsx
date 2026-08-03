@@ -6,10 +6,12 @@ import ProcessTimeline from "../components/ProcessTimeline";
 import PartnersBar from "../components/PartnersBar";
 import QuickAccessCTA from "../components/QuickAccessCTA";
 import NewsletterSignup from "../components/NewsletterSignup";
-import { PROJECTS } from "../lib/projectsData";
+import ProjectCard from "../components/ProjectCard";
+import { getFeaturedProjects } from "../lib/projectsData";
+import { getProjectCover } from "../lib/getProjectImages";
 
 export default function Home() {
-  const previewProjects = PROJECTS.slice(0, 2);
+  const featuredProjects = getFeaturedProjects(6);
 
   return (
     <>
@@ -42,7 +44,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── معرفی کوتاه (سفید — تغییر جدید) ── */}
+      {/* ── معرفی کوتاه (سفید) ── */}
       <section
         style={{
           background: "#ffffff",
@@ -106,9 +108,7 @@ export default function Home() {
               background: "rgba(212,175,55,0.1)",
             }}
           >
-            <ServiceCard icon="🏗️" title="طراحی سازه" />
-            <ServiceCard icon="🛣️" title="راه و ترابری" />
-            <ServiceCard icon="💧" title="آب و فاضلاب" />
+            <ServiceCard icon="🏗️" title="طراحی ساختمان های ویلایی - مسکونی-اداری و تجاری" />
             <ServiceCard icon="📋" title="نظارت کارگاهی" />
           </div>
 
@@ -145,62 +145,20 @@ export default function Home() {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-              gap: "2px",
-              background: "rgba(212,175,55,0.1)",
+              gap: "28px",
             }}
           >
-            {previewProjects.map((p) => (
-              <Link
+            {featuredProjects.map((p) => (
+              <ProjectCard
                 key={p.slug}
                 href={`/projects/${p.slug}`}
-                className="home-project-card"
-                style={{
-                  background: "#0b0b0d",
-                  aspectRatio: "4 / 3",
-                  position: "relative",
-                  overflow: "hidden",
-                  textDecoration: "none",
-                  color: "inherit",
-                  cursor: "pointer",
-                  display: "block",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "radial-gradient(circle at 30% 20%, rgba(212,175,55,0.12) 0%, transparent 60%)",
-                  }}
-                />
-                <div style={{ position: "absolute", bottom: 0, right: 0, left: 0, padding: "24px" }}>
-                  <div style={{ fontSize: "11px", color: "#D4AF37", marginBottom: "6px" }}>{p.tag}</div>
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>{p.name}</h3>
-                </div>
-                <span className="view-project-btn">مشاهده جزئیات ←</span>
-              </Link>
+                coverSrc={getProjectCover(p.slug)}
+                alt={p.name || p.tag || p.slug}
+                title={p.name || p.slug}
+                tag={p.tag || p.category}
+              />
             ))}
           </div>
-
-          <style>{`
-            .home-project-card { transition: transform 0.3s ease; }
-            .home-project-card:hover { transform: translateY(-4px); }
-            .view-project-btn {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%,-50%) scale(0.9);
-              background: linear-gradient(180deg,#efd98a,#D4AF37);
-              color: #000;
-              font-size: 13px;
-              font-weight: 700;
-              padding: 10px 22px;
-              border-radius: 999px;
-              opacity: 0;
-              transition: opacity 0.25s ease, transform 0.25s ease;
-              white-space: nowrap;
-            }
-            .home-project-card:hover .view-project-btn { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-          `}</style>
 
           <div style={{ textAlign: "center", marginTop: "40px" }}>
             <Link
