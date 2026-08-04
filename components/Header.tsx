@@ -41,7 +41,18 @@ export default function Header() {
           margin: "0 auto",
         }}
       >
-        {/* رفع درخواست: به‌جای متن ساده، لوگوی واقعی شرکت نمایش داده می‌شود */}
+        {/*
+          رفع درخواست «لوگو واسه ویندوز کوچیکه، واسه موبایل هم یه‌خورده
+          بزرگترش کن»: چون سایز از طریق style اینلاین ست شده بود، امکان
+          تعریف اندازه‌ی متفاوت برای دسکتاپ/موبایل وجود نداشت (اینلاین
+          style نمی‌تواند media query داشته باشد). الان اندازه از طریق
+          کلاس header-logo و همان بلوک <style> پایین صفحه (که پیش‌تر برای
+          نمایش/مخفی‌کردن منو استفاده می‌شد) به‌صورت ریسپانسیو کنترل
+          می‌شود: ۵۲px روی موبایل (قبلاً ۴۰px) و ۷۲px روی دسکتاپ (قبلاً
+          ۴۰px، که با توجه به عرض هدر ۱۴۰۰px واقعاً کوچک به‌نظر می‌رسید).
+          نسبت واقعی لوگو (۱۴۰×۹۳) حفظ می‌شود چون فقط height ست می‌شود و
+          width روی auto می‌ماند.
+        */}
         <Link
           href="/"
           style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}
@@ -53,6 +64,7 @@ export default function Header() {
             height={93}
             priority
             className="header-logo"
+            style={{ width: "auto" }}
           />
         </Link>
 
@@ -167,19 +179,14 @@ export default function Header() {
       )}
 
       <style>{`
-        /* رفع درخواست: لوگو روی دسکتاپ (ویندوز) کوچیک بود، بزرگ‌تر شد؛
-           روی موبایل هم یک‌مقدار (نه به‌اندازه دسکتاپ) بزرگ‌تر شد. */
-        .header-logo {
-          height: 58px !important;
-          width: auto !important;
-        }
+        .header-logo { height: 52px; }
         @media (max-width: 900px) {
           .desktop-nav { display: none !important; }
           .hamburger-btn { display: flex !important; }
-          .header-logo { height: 48px !important; }
         }
         @media (min-width: 901px) {
           .mobile-nav { display: none !important; }
+          .header-logo { height: 72px; }
         }
       `}</style>
     </header>

@@ -25,6 +25,9 @@ const STEPS = [
   { time: 0.90, label: "تحویل پروژه",     desc: "لحظه‌ای که افتخار به دست می‌آید" },
 ];
 
+/* آستانه‌ی موبایل — دقیقاً همان مقداری که در media query پایین فایل استفاده می‌شود */
+const MOBILE_BREAKPOINT_QUERY = "(max-width: 768px)";
+
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef   = useRef<HTMLVideoElement>(null);
@@ -44,11 +47,35 @@ export default function CinematicConstruction() {
 
   const [ready, setReady]           = useState(false);
   const [isVertical, setIsVertical] = useState(false);
+
   /*
-    نسبت واقعی عرض/ارتفاع ویدیو (مثلاً ۱۱۷۶/۱۷۶۴). قبلاً فقط یک
-    boolean (isVertical) داشتیم که کافی نبود — پایین توضیح داده شده.
+    رفع درخواست «فیلم روی موبایل زوم شده / فاصله‌ی سیاه بالای فیلم»:
+    قبلاً روی موبایل، ارتفاع فریم دقیقاً برابر با نسبت ابعاد واقعی
+    ویدیو محاسبه می‌شد (calc(100vw / aspect))، که چون نسبت ابعاد
+    ویدیوی عمودی (~۰.۶۷) با نسبت ابعاد صفحه‌ی گوشی (~۰.۴۶) یکی نیست،
+    فریم از ارتفاع کامل ۱۰۰vh کوتاه‌تر می‌ماند. فضای خالیِ باقی‌مانده
+    (بالا/پایین) با لایه‌ی بلور تیره پر می‌شد که چون filter آن
+    brightness(0.22) دارد، عملاً یک نوار تقریباً سیاه به‌نظر می‌رسد —
+    دقیقاً همان «فاصله‌ی سیاه بالای فیلم» که گزارش شده بود.
+    راه‌حل استاندارد صنعت برای ویدیوی هیرو (که در اپل، سایت‌های جوایز
+    طراحی و... هم استفاده می‌شود): فریم همیشه دقیقاً ۱۰۰vw × ۱۰۰vh را
+    با object-fit:cover پر می‌کند — بدون هیچ فاصله‌ای، در ازای کمی
+    برش طبیعی از دو طرف (که چون object-position روی center است،
+    مساوی و نامحسوس توزیع می‌شود). چون این حالت دیگر نیازی به لایه‌ی
+    بلورِ پس‌زمینه ندارد (چیزی برای پر کردن باقی نمی‌ماند)، آن ویدیوی
+    دوم را روی موبایل اصلاً mount نمی‌کنیم — هم باگ را رفع می‌کند، هم
+    بار دیکود دو ویدیوی هم‌زمان را از موبایل (که معمولاً محدودترین
+    دستگاه است) حذف می‌کند.
   */
-  const [aspect, setAspect] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+    const applyMatch = () => setIsMobile(mql.matches);
+    applyMatch();
+    mql.addEventListener("change", applyMatch);
+    return () => mql.removeEventListener("change", applyMatch);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -56,9 +83,6 @@ export default function CinematicConstruction() {
 
     const readDims = () => {
       setIsVertical(video.videoHeight > video.videoWidth);
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        setAspect(video.videoWidth / video.videoHeight);
-      }
       setReady(true);
     };
 
@@ -205,9 +229,10 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
-        {isVertical && (
+        {isVertical && !isMobile && (
           <video
             ref={blurRef}
+            className="cinematic-blur-bg"
             src={VIDEO_SRC}
             poster={POSTER_SRC}
             muted
@@ -240,16 +265,11 @@ export default function CinematicConstruction() {
           باشد چه تمام‌عرض موبایل، پوشش همیشه دقیقاً روی گوشه‌ی واقعی
           ویدیو می‌افتد.
 
-          رفع باگ دوم «بالای عکس روی موبایل خالی می‌افتد»:
-          قبلاً روی موبایل از object-fit:contain با ارتفاع ثابت ۱۰۰vh
-          استفاده می‌شد؛ چون نسبت ابعاد گوشی با نسبت ابعاد ویدیوی
-          عمودی یکی نیست، این باعث می‌شد فضای خالی (letterbox) بالا و
-          پایین ویدیو بیفتد. الان به‌جای ارتفاع ثابت، از aspect-ratio
-          واقعی خودِ ویدیو استفاده می‌شود؛ یعنی فریم دقیقاً هم‌اندازه‌ی
-          محتوای واقعی ویدیو کشیده می‌شود (بدون فضای خالی داخلی) و در
-          صفحه به‌صورت عمودی وسط‌چین می‌ماند. فضای بالا/پایینِ باقی‌مانده
-          (طبیعی و لازم چون نسبت‌ابعاد فرق دارد) با همان لایه‌ی بلورِ
-          پس‌زمینه (blurRef) پر می‌شود، نه با یک نوار خالیِ تیره.
+          رفع باگ دوم «فاصله‌ی سیاه بالای فیلم / زوم روی موبایل»:
+          به‌جای letterbox با aspect-ratio (که فاصله‌ی تیره ایجاد
+          می‌کرد)، فریم روی موبایل حالا همیشه دقیقاً ۱۰۰٪ عرض و ۱۰۰٪
+          ارتفاعِ کانتینر sticky را با cover پر می‌کند — همان رفتار
+          استانداردِ ویدیوی هیرو در وب، بدون هیچ فاصله‌ی خالی.
         */}
         <div
           className="cinematic-video-frame"
@@ -285,8 +305,12 @@ export default function CinematicConstruction() {
             construction.mp4 است، پس با کد قابل حذف کامل نیست — راه‌حل
             قطعی این است که همین ویدیو را بدون واترمارک دوباره export
             کنی و در public/videos/construction.mp4 جایگزین فایل فعلی
-            کنی. تا آن زمان، این باکس همیشه دقیقاً گوشه‌ی پایین‌راستِ
-            خودِ ویدیو (نه صفحه) را می‌پوشاند.
+            کنی. تا آن زمان، به‌جای یک باکس تیره‌ی لبه‌تیز (که خودش به‌
+            چشم می‌آمد و به‌عنوان یک باگ گزارش شد)، اینجا یک vignette
+            گرد و محوشونده (radial-gradient) از گوشه‌ی پایین‌راستِ خودِ
+            فریم ویدیو کشیده شده — همان سطح پوشش را روی واترمارک حفظ
+            می‌کند، اما به‌جای «مستطیل سیاه»، مثل یک سایه‌ی سینمایی
+            طبیعی گوشه‌ی قاب به‌نظر می‌رسد.
           */}
           <div
             aria-hidden="true"
@@ -294,10 +318,11 @@ export default function CinematicConstruction() {
               position: "absolute",
               bottom: 0,
               right: 0,
-              width: "clamp(90px, 18vw, 190px)",
-              height: "clamp(36px, 6vw, 60px)",
+              width: "clamp(150px, 26vw, 260px)",
+              height: "clamp(64px, 10vw, 110px)",
               zIndex: 3,
-              background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
+              background:
+                "radial-gradient(ellipse at 100% 100%, rgba(5,5,5,0.99) 0%, rgba(5,5,5,0.94) 30%, rgba(5,5,5,0.65) 55%, rgba(5,5,5,0) 85%)",
             }}
           />
         </div>
@@ -316,46 +341,37 @@ export default function CinematicConstruction() {
           }
 
           /*
-            توجه: نسخه‌ی قبلی اینجا سعی می‌کرد روی موبایل با محاسبه‌ی
-            aspect-ratio واقعی ویدیو، فریم را بدون هیچ crop نمایش دهد.
-            همین محاسبه منشاء باگ «نوار تیره‌ی بالای فیلم» بود (توضیح
-            کامل در کامنت داخل media query پایین). الان دوباره ساده و
-            یکسان با دسکتاپ شد: همیشه cover و تمام کادر را پر می‌کند.
+            رفع باگ زوم/فاصله‌ی سیاه روی موبایل:
+            روی دسکتاپ، ستون سینمایی ۴۰٪ عرض عمداً با cover برش‌خورده
+            نمایش داده می‌شود (طراحی آگاهانه) و اطراف آن با لایه‌ی بلور
+            پر می‌شود. روی موبایل، فریم حالا دقیقاً ۱۰۰٪ عرض و ۱۰۰٪
+            ارتفاعِ صفحه را می‌گیرد (همان رفتار استاندارد ویدیوی هیرو
+            در وب) — یعنی هرگز فاصله‌ی خالی/تیره بالا یا پایین باقی
+            نمی‌ماند. در ازای آن، طبق ماهیت object-fit:cover، ممکن است
+            کمی از دو طرفِ افقیِ ویدیو (نه بالا/پایین) به‌صورت متقارن
+            برش بخورد؛ این دقیقاً همان رفتاری است که در تقریباً همه‌ی
+            سایت‌های حرفه‌ای با ویدیوی هیرو دیده می‌شود.
           */
           @media (max-width: 768px) {
-            /*
-              رفع باگ «فاصله/گپ تیره بالای فیلم روی موبایل»:
-              روش قبلی سعی می‌کرد ارتفاع فریم را دقیقاً برابر
-              aspect-ratio واقعی ویدیو حساب کند (calc(100vw / aspect))
-              تا بدون crop نمایش داده شود. اما چون این فریم با
-              top:50%/left:50% + translate(-50%,-50%) وسط‌چین است،
-              هر بار که این عدد کمی کمتر از 100vh می‌شد (یا قبل از
-              رسیدن aspect واقعی، برای یک لحظه undefined بود)، بالا و
-              پایین فریم از پس‌زمینه‌ی #050505 خودِ wrapper پر می‌شد —
-              همان نوار تیره‌ی زیر هدر که گزارش شده بود. الان روی
-              موبایل هم دقیقاً مثل دسکتاپ، فریم همیشه ۱۰۰٪ عرض و ۱۰۰٪
-              ارتفاعِ کانتینر (که خودش 100vh است) را با object-fit:cover
-              پر می‌کند — یعنی هیچ‌وقت گپ خالی نمی‌ماند، به قیمتِ کمی
-              crop در گوشه‌های ویدیوی عمودی (که قابل‌قبول‌تر از یک نوار
-              تیره‌ی توپر است).
-            */
             .cinematic-video-frame {
               width: 100% !important;
               height: 100% !important;
             }
-            .cinematic-label-top { top: 5.5rem !important; right: 1.2rem !important; }
-            .cinematic-label-top span { font-size: 10px !important; letter-spacing: 3px !important; }
-            .cinematic-label-top div { width: 24px !important; }
-            .cinematic-dots { left: 1rem !important; gap: 0.6rem !important; }
+            .cinematic-blur-bg { display: none !important; }
+            .cinematic-label-top { top: 1rem !important; right: 1.1rem !important; }
+            .cinematic-label-top span { font-size: 9px !important; letter-spacing: 2px !important; }
+            .cinematic-label-top div { width: 20px !important; }
+            .cinematic-dots { left: 1rem !important; gap: 0.55rem !important; }
             .cinematic-dot-num { display: none !important; }
+            .cinematic-step-index { font-size: 10px !important; letter-spacing: 3px !important; margin-bottom: 0.4rem !important; }
             .cinematic-text {
-              bottom: 2rem !important;
-              right: 1.2rem !important;
-              left: 1.2rem !important;
+              bottom: 1.75rem !important;
+              right: 1.1rem !important;
+              left: 1.1rem !important;
               max-width: none !important;
             }
-            .cinematic-text h2 { font-size: clamp(22px,7vw,32px) !important; }
-            .cinematic-text p { font-size: clamp(12px,3vw,14px) !important; }
+            .cinematic-text h2 { font-size: clamp(18px,5.5vw,24px) !important; margin-bottom: 0.4rem !important; }
+            .cinematic-text p { font-size: clamp(11px,2.6vw,13px) !important; line-height: 1.6 !important; }
           }
         `}</style>
 
@@ -371,19 +387,9 @@ export default function CinematicConstruction() {
           <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        {/*
-          رفع باگ «مراحل ساخت پشت لوگوی هدر پنهان می‌شود»:
-          هدر سایت position:fixed دارد و همیشه روی همه‌چیز (z-index:100)
-          می‌نشیند. قبلاً این برچسب در top:2rem بود که دقیقاً زیر هدر و
-          پشت لوگو قرار می‌گرفت. الان به‌اندازه‌ی ارتفاع واقعی هدر
-          (~90px دسکتاپ / ~76px موبایل) پایین‌تر آمده و یک سایه‌ی متن
-          هم گرفته تا روی تصویر روشن ویدیو هم واضح و پررنگ خوانده شود
-          (قبلاً چون فقط رنگ طلایی کم‌کنتراست بود، روی فریم‌های روشن
-          ویدیو کم‌رنگ به‌نظر می‌رسید).
-        */}
-        <div className="cinematic-label-top" style={{ position: "absolute", top: "6.5rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 1, background: "#D4AF37", boxShadow: "0 1px 4px rgba(0,0,0,0.6)" }} />
-          <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, textShadow: "0 1px 6px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)" }}>مراحل ساخت</span>
+        <div className="cinematic-label-top" style={{ position: "absolute", top: "2rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 1, background: "#D4AF37" }} />
+          <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700 }}>مراحل ساخت</span>
         </div>
 
         <div className="cinematic-dots" style={{ position: "absolute", left: "2rem", top: "50%", transform: "translateY(-50%)", zIndex: 10, display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -416,7 +422,7 @@ export default function CinematicConstruction() {
             animation: "caFade 0.5s ease forwards",
           }}
         >
-          <div ref={stepIndexRef} style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, marginBottom: "0.6rem" }}>
+          <div ref={stepIndexRef} className="cinematic-step-index" style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, marginBottom: "0.6rem" }}>
             {toPersian(1)} / {toPersian(STEPS.length)}
           </div>
           <h2 ref={stepTitleRef} style={{ color: "#fff", fontSize: "clamp(28px,4.5vw,62px)", fontWeight: 900, lineHeight: 1.15, marginBottom: "0.6rem" }}>

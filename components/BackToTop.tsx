@@ -40,9 +40,13 @@ export default function BackToTop() {
       onClick={scrollToTop}
       aria-label="بازگشت به بالای صفحه"
       style={{
+        // دکمه‌ی واتساپ حالا اینجا (سمت چپ) قرار دارد؛ این دکمه ۶۸px
+        // بالاتر می‌نشیند (۲۰px فاصله‌ی واتساپ از پایین + ۵۶px ارتفاع
+        // واتساپ + ۱۲px فاصله‌ی بین دو دکمه) تا وقتی هر دو هم‌زمان دیده
+        // می‌شوند، دقیقاً روی هم قرار نگیرند.
         position: "fixed",
         left: "20px",
-        bottom: "20px",
+        bottom: "88px",
         width: "48px",
         height: "48px",
         borderRadius: "50%",
