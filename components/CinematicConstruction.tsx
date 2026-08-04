@@ -44,24 +44,31 @@ export default function CinematicConstruction() {
 
   const [ready, setReady]           = useState(false);
   const [isVertical, setIsVertical] = useState(false);
+  /*
+    نسبت واقعی عرض/ارتفاع ویدیو (مثلاً ۱۱۷۶/۱۷۶۴). قبلاً فقط یک
+    boolean (isVertical) داشتیم که کافی نبود — پایین توضیح داده شده.
+  */
+  const [aspect, setAspect] = useState<number | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const onLoadedMeta = () => {
+    const readDims = () => {
       setIsVertical(video.videoHeight > video.videoWidth);
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setAspect(video.videoWidth / video.videoHeight);
+      }
       setReady(true);
     };
 
-    video.addEventListener("loadedmetadata", onLoadedMeta);
+    video.addEventListener("loadedmetadata", readDims);
 
     if (video.readyState >= 1 && video.videoWidth > 0) {
-      setIsVertical(video.videoHeight > video.videoWidth);
-      setReady(true);
+      readDims();
     }
 
-    return () => video.removeEventListener("loadedmetadata", onLoadedMeta);
+    return () => video.removeEventListener("loadedmetadata", readDims);
   }, []);
 
   useEffect(() => {
@@ -218,32 +225,88 @@ export default function CinematicConstruction() {
           />
         )}
 
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          preload="auto"
-          poster={POSTER_SRC}
-          aria-hidden="true"
-          className="cinematic-video"
+        {/*
+          رفع باگ اصلی «واترمارک فقط روی موبایل درست شد، روی ویندوز نه»:
+          قبلاً باکس تیره‌ی پوشاننده‌ی واترمارک، مستقیماً نسبت به کل
+          صفحه (100vw × 100vh) موقعیت‌دهی می‌شد (bottom:0; right:0).
+          روی موبایل این تقریباً درست بود چون ویدیو کل عرض صفحه را
+          می‌گرفت، اما روی دسکتاپ ویدیو فقط یک ستون باریک ۴۰٪ در وسط
+          صفحه است — یعنی باکسِ «راست/پایینِ صفحه» اصلاً روی ویدیو
+          نمی‌افتاد و واترمارک دیده می‌شد.
+          الان یک «فریم» جدید (کانتینر زیر) دقیقاً هم‌اندازه‌ی خودِ
+          ویدیوی نمایش‌داده‌شده است (همان ابعادی که قبلاً روی خودِ
+          تگ video بود) و واترمارک به‌جای صفحه، داخل همین فریم و نسبت
+          به گوشه‌ی خودش پوشانده می‌شود — پس چه ویدیو ۴۰٪ وسط دسکتاپ
+          باشد چه تمام‌عرض موبایل، پوشش همیشه دقیقاً روی گوشه‌ی واقعی
+          ویدیو می‌افتد.
+
+          رفع باگ دوم «بالای عکس روی موبایل خالی می‌افتد»:
+          قبلاً روی موبایل از object-fit:contain با ارتفاع ثابت ۱۰۰vh
+          استفاده می‌شد؛ چون نسبت ابعاد گوشی با نسبت ابعاد ویدیوی
+          عمودی یکی نیست، این باعث می‌شد فضای خالی (letterbox) بالا و
+          پایین ویدیو بیفتد. الان به‌جای ارتفاع ثابت، از aspect-ratio
+          واقعی خودِ ویدیو استفاده می‌شود؛ یعنی فریم دقیقاً هم‌اندازه‌ی
+          محتوای واقعی ویدیو کشیده می‌شود (بدون فضای خالی داخلی) و در
+          صفحه به‌صورت عمودی وسط‌چین می‌ماند. فضای بالا/پایینِ باقی‌مانده
+          (طبیعی و لازم چون نسبت‌ابعاد فرق دارد) با همان لایه‌ی بلورِ
+          پس‌زمینه (blurRef) پر می‌شود، نه با یک نوار خالیِ تیره.
+        */}
+        <div
+          className="cinematic-video-frame"
           style={{
             position: "absolute",
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            objectFit: "cover",
-            objectPosition: "center",
             zIndex: 1,
+            overflow: "hidden",
           }}
         >
-          <source src={VIDEO_SRC} type="video/mp4" />
-        </video>
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            preload="auto"
+            poster={POSTER_SRC}
+            aria-hidden="true"
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+          >
+            <source src={VIDEO_SRC} type="video/mp4" />
+          </video>
+
+          {/*
+            پوشش واترمارک «Media.io AI Gen»: بخشی از خودِ پیکسل‌های
+            construction.mp4 است، پس با کد قابل حذف کامل نیست — راه‌حل
+            قطعی این است که همین ویدیو را بدون واترمارک دوباره export
+            کنی و در public/videos/construction.mp4 جایگزین فایل فعلی
+            کنی. تا آن زمان، این باکس همیشه دقیقاً گوشه‌ی پایین‌راستِ
+            خودِ ویدیو (نه صفحه) را می‌پوشاند.
+          */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: "clamp(90px, 18vw, 190px)",
+              height: "clamp(36px, 6vw, 60px)",
+              zIndex: 3,
+              background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
+            }}
+          />
+        </div>
 
         <style>{`
           @keyframes caFade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
           @keyframes caSpin { to { transform:rotate(360deg); } }
 
-          .cinematic-video {
+          .cinematic-video-frame {
             width: 40%;
             height: ${isVertical ? "108vh" : "100%"};
           }
@@ -253,20 +316,27 @@ export default function CinematicConstruction() {
           }
 
           /*
-            رفع باگ اصلی زوم/کراپ روی موبایل:
-            روی دسکتاپ، cover عمداً استفاده می‌شود (یک ستون باریک
-            سینمایی که بخشی از ویدیو را برش می‌زند — طراحی آگاهانه).
-            روی موبایل، ویدیو کل صفحه را می‌گیرد و نسبت‌ابعاد گوشی
-            (خیلی باریک‌تر و کشیده‌تر از ویدیوی 1176×1764) باعث می‌شد
-            cover لبه‌های کناری را به‌شدت برش بزند و حس "زوم‌شده" بدهد.
-            contain کل فریم را بدون برش نشان می‌دهد؛ فاصله‌های خالی
-            (letterbox) با لایه‌ی بلور پشت آن (blurRef) پر می‌شوند.
+            رفع باگ زوم/کراپ روی موبایل:
+            روی دسکتاپ، ستون سینمایی ۴۰٪ عرض عمداً با cover برش‌خورده
+            نمایش داده می‌شود (طراحی آگاهانه). روی موبایل، فریم دیگر
+            یک ارتفاع ثابت (100vh) ندارد؛ با aspect-ratio واقعیِ ویدیو
+            محاسبه می‌شود تا خودِ فریم دقیقاً هم‌اندازه‌ی محتوای واقعی
+            ویدیو باشد — یعنی نه برشی می‌افتد (cover) و نه فضای خالیِ
+            داخلی (contain با جعبه‌ی نامتناسب). فاصله‌ی طبیعیِ بالا/پایین
+            که به‌خاطر فرق نسبت‌ابعاد صفحه‌ی گوشی باقی می‌ماند، با
+            لایه‌ی بلور پشت آن (blurRef) پر می‌شود، نه یک نوار خالیِ تیره.
           */
           @media (max-width: 768px) {
-            .cinematic-video {
+            .cinematic-video-frame {
               width: 100% !important;
-              height: ${isVertical ? "100vh" : "100%"} !important;
-              object-fit: contain !important;
+              height: ${
+                isVertical
+                  ? aspect
+                    ? `calc(100vw / ${aspect})`
+                    : "100vh"
+                  : "100%"
+              } !important;
+              max-height: 100vh !important;
             }
             .cinematic-label-top { top: 1.2rem !important; right: 1.2rem !important; }
             .cinematic-label-top span { font-size: 10px !important; letter-spacing: 3px !important; }
@@ -289,30 +359,6 @@ export default function CinematicConstruction() {
             position: "absolute", inset: 0, zIndex: 2,
             background:
               "linear-gradient(to bottom,rgba(5,5,5,0.6) 0%,rgba(5,5,5,0) 20%,rgba(5,5,5,0) 65%,rgba(5,5,5,0.9) 100%)",
-          }}
-        />
-
-        {/*
-          راه‌حل موقت برای واترمارک «Media.io AI Gen»:
-          این نوشته بخشی از خودِ پیکسل‌های فایل construction.mp4 است،
-          پس با کد قابل حذف کامل نیست — راه‌حل قطعی این است که همین
-          ویدیو را بدون واترمارک دوباره export کنی و در
-          public/videos/construction.mp4 جایگزین فایل فعلی کنی.
-          تا آن زمان، این باکس تیره‌ی گوشه‌ی پایین‌راست فقط همان ناحیه
-          را می‌پوشاند (مطابق موقعیتی که در اسکرین‌شات دیده شد). اگر
-          واترمارک در ویدیوی نهایی جای دیگری بود، فقط کافی‌ست
-          right/bottom/width/height زیر را تغییر بدهی.
-        */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            width: "clamp(90px, 16vw, 170px)",
-            height: "clamp(34px, 5vw, 54px)",
-            zIndex: 3,
-            background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
           }}
         />
 

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const MAIN_LINKS = [
@@ -69,9 +70,14 @@ export default function Footer() {
       >
         {/* درباره */}
         <div>
-          <div style={{ color: "#D4AF37", fontWeight: 900, fontSize: "20px", marginBottom: "14px" }}>
-            Civil-Art
-          </div>
+          {/* رفع درخواست: لوگوی واقعی به‌جای نوشته‌ی متنی */}
+          <Image
+            src="/images/civil-art-logo.png"
+            alt="Civil-Art"
+            width={140}
+            height={93}
+            style={{ height: "42px", width: "auto", marginBottom: "14px" }}
+          />
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.9 }}>
             شرکت فنی و مهندسی فعال در طراحی، نظارت، مدیریت و اجرای پروژه‌های
             عمرانی، ساختمانی و صنعتی.

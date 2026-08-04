@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -40,11 +41,19 @@ export default function Header() {
           margin: "0 auto",
         }}
       >
+        {/* رفع درخواست: به‌جای متن ساده، لوگوی واقعی شرکت نمایش داده می‌شود */}
         <Link
           href="/"
-          style={{ color: "#D4AF37", fontWeight: 900, fontSize: "20px", textDecoration: "none" }}
+          style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}
         >
-          Civil-Art
+          <Image
+            src="/images/civil-art-logo.png"
+            alt="Civil-Art"
+            width={140}
+            height={93}
+            priority
+            style={{ height: "40px", width: "auto" }}
+          />
         </Link>
 
         {/* ── منو دسکتاپ ── */}

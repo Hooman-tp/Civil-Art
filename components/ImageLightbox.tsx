@@ -112,7 +112,7 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px",
+        padding: "10px",
         backdropFilter: "blur(8px)",
       }}
     >
@@ -155,25 +155,12 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
         </ToolbarButton>
       </div>
 
-      {/* ── فلش‌های قبلی/بعدی ── */}
-      {hasMultiple && (
-        <>
-          <ToolbarButton
-            label="عکس قبلی"
-            onClick={goPrev}
-            style={{ position: "absolute", insetInlineStart: "16px", top: "50%", transform: "translateY(-50%)", zIndex: 1002 }}
-          >
-            <IconChevron direction="prev" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="عکس بعدی"
-            onClick={goNext}
-            style={{ position: "absolute", insetInlineEnd: "16px", top: "50%", transform: "translateY(-50%)", zIndex: 1002 }}
-          >
-            <IconChevron direction="next" />
-          </ToolbarButton>
-        </>
-      )}
+      {/*
+        رفع درخواست: دکمه‌های فلش قبلی/بعدی (آیکون‌های گرد کنار عکس)
+        حذف شدند. ناوبری بین عکس‌ها همچنان از طریق کشیدن انگشت/موس
+        (swipe) و کلیدهای جهت‌نمای صفحه‌کلید کار می‌کند — فقط آیکون‌های
+        روی صفحه حذف شدند تا عکس بتواند فضای بیشتری بگیرد.
+      */}
 
       <div
         onClick={(event) => event.stopPropagation()}
@@ -184,8 +171,8 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
         }}
         style={{
           position: "relative",
-          width: "min(92vw, 1200px)",
-          height: "min(85vh, 800px)",
+          width: "min(98vw, 1600px)",
+          height: "min(92vh, 950px)",
           borderRadius: "18px",
           overflow: "hidden",
           boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
@@ -329,11 +316,3 @@ function IconReset() {
   );
 }
 
-function IconChevron({ direction }: { direction: "prev" | "next" }) {
-  const d = direction === "prev" ? "M15 5L8 12L15 19" : "M9 5L16 12L9 19";
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d={d} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
