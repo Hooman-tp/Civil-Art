@@ -295,7 +295,7 @@ export default function CinematicConstruction() {
               bottom: 0,
               right: 0,
               width: "clamp(90px, 18vw, 190px)",
-              height: "clamp(36px, 6vw, 60px)",
+              height: "clamp(0px, 6vw, 00px)",
               zIndex: 3,
               background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
             }}
@@ -308,7 +308,7 @@ export default function CinematicConstruction() {
 
           .cinematic-video-frame {
             width: 40%;
-            height: ${isVertical ? "108vh" : "100%"};
+            height: ${isVertical ? "100vh" : "100%"};
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -328,7 +328,7 @@ export default function CinematicConstruction() {
           */
           @media (max-width: 768px) {
             .cinematic-video-frame {
-              width: 100% !important;
+              width: 110% !important;
               height: ${
                 isVertical
                   ? aspect
