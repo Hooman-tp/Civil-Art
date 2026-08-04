@@ -4,9 +4,9 @@ import Image, { type ImageProps } from "next/image";
  * ══════════════════════════════════════════════════════════════════
  * واترمارک لوگو روی تمام عکس‌های پروژه‌ها
  * ══════════════════════════════════════════════════════════════════
- * به‌جای الگوی تکرارشونده‌ی متنی قبلی، فقط لوگوی شرکت (فایل
- * public/logo-icon.png) به‌صورت کوچک در گوشه‌ی پایین-چپ عکس نمایش
- * داده می‌شود — هدف: اثبات مالکیت عکس بدون خراب کردن حس گالری/عکاسی.
+ * لوگوی کامل شرکت (public/logo.png) با شفافیت زیاد در وسط عکس قرار
+ * می‌گیرد — به اندازه‌ی کافی دیده می‌شود که مانع سوءاستفاده شود، اما
+ * آن‌قدر کم‌رنگ است که مزاحم دیدن خود عکس نشود.
  *
  * همیشه از همین کامپوننت به‌جای next/image خام برای عکس‌های پروژه
  * استفاده کن تا واترمارک روی همه‌جا یکسان بماند.
@@ -27,22 +27,22 @@ export default function WatermarkedImage({ imageClassName, alt, ...imageProps }:
         aria-hidden="true"
         style={{
           position: "absolute",
-          bottom: "3%",
-          left: "3%",
-          width: "26%",
-          maxWidth: "150px",
-          minWidth: "72px",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "38%",
+          maxWidth: "220px",
+          minWidth: "90px",
           aspectRatio: "1000 / 665",
-          opacity: 0.92,
+          opacity: 0.28,
           pointerEvents: "none",
-          filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
         }}
       >
         <Image
           src="/logo.png"
           alt=""
           fill
-          sizes="150px"
+          sizes="220px"
           style={{ objectFit: "contain" }}
         />
       </div>

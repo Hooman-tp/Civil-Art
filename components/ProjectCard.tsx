@@ -14,7 +14,7 @@ export type ProjectCardProps = {
   /**
    * اگر مقدار داده شود، کلیک روی عکس این تابع را صدا می‌زند (برای باز
    * کردن Lightbox) به‌جای رفتن مستقیم به صفحه‌ی پروژه. دکمه‌ی «مشاهده
-   * جزئیات» در پنل زیرین همیشه، در هر دو حالت، به صفحه‌ی پروژه می‌رود.
+   * جزئیات» در هر دو حالت همیشه به صفحه‌ی پروژه می‌رود.
    */
   onImageClick?: () => void;
 };
@@ -86,7 +86,11 @@ export default function ProjectCard({
         </Link>
       )}
 
-      {/* پنل اطلاعات، عمداً روی لبه‌ی پایین عکس روکش می‌شود تا حس عمق و لایه‌بندی بدهد */}
+      {/*
+        پنل اطلاعات روی لبه‌ی پایین عکس روکش می‌شود (margin منفی) تا حس
+        عمق و لایه‌بندی بدهد. دکمه‌ی CTA دقیقاً روی خط اتصال عکس و پنل
+        شناور است (موقعیت‌دهی کامل داخل globals.css در کلاس project-card-cta).
+      */}
       <div
         style={{
           position: "relative",
@@ -95,33 +99,36 @@ export default function ProjectCard({
           background: "#111113",
           border: "1px solid rgba(212,175,55,0.22)",
           borderRadius: "16px",
-          padding: "18px 20px",
+          padding: "30px 20px 18px",
           boxShadow: "0 10px 26px rgba(0,0,0,0.35)",
         }}
       >
+        <Link href={href} className="project-card-cta">
+          مشاهده جزئیات ←
+        </Link>
+
         {tag && (
           <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "1.5px", marginBottom: "6px" }}>
             {tag}
           </div>
         )}
-        <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff", marginBottom: description ? "6px" : "14px", lineHeight: 1.6 }}>
+        <h3
+          style={{
+            fontSize: "16px",
+            fontWeight: 700,
+            color: "#fff",
+            marginBottom: description ? "6px" : year ? "10px" : 0,
+            lineHeight: 1.6,
+          }}
+        >
           {title}
         </h3>
         {description && (
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.8, marginBottom: "14px" }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.8, marginBottom: year ? "10px" : 0 }}>
             {description}
           </p>
         )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-          {year ? (
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>{year}</span>
-          ) : (
-            <span />
-          )}
-          <Link href={href} className="project-card-cta">
-            مشاهده جزئیات ←
-          </Link>
-        </div>
+        {year && <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>{year}</span>}
       </div>
     </div>
   );

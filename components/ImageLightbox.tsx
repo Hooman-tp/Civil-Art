@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import WatermarkedImage from "./WatermarkedImage";
 
 export type LightboxImage = { src: string; alt: string };
@@ -12,10 +12,13 @@ type ImageLightboxProps = {
   onNavigate: (index: number) => void;
 };
 
+const SWIPE_THRESHOLD_PX = 50;
+
 /**
- * نمایش تمام‌صفحه‌ی یک عکس با امکان جابه‌جایی بین چند عکس (کلید جهت‌نما،
- * دکمه‌های بعدی/قبلی، یا کلیک روی پس‌زمینه برای بستن). برای استفاده در
- * گالری، لیست پروژه‌ها و گالری داخل صفحه‌ی هر پروژه به‌کار می‌رود.
+ * نمایش تمام‌صفحه‌ی یک عکس با ناوبری از طریق کشیدن انگشت (موبایل) یا
+ * کشیدن موس (دسکتاپ) — بدون دکمه‌ی فلش یا ضربدر. برای بستن، روی
+ * فضای تیره‌ی اطراف عکس کلیک/تپ کن. کلیدهای جهت‌نما و Escape هم
+ * برای دسترس‌پذیری کیبورد پشتیبانی می‌شوند (بدون نمایش دکمه‌ی مجزا).
  */
 export default function ImageLightbox({ images, activeIndex, onClose, onNavigate }: ImageLightboxProps) {
   const hasMultiple = images.length > 1;
@@ -44,6 +47,27 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
     };
   }, [onClose, goPrev, goNext]);
 
+  const dragStartX = useRef<number | null>(null);
+
+  const handlePointerDown = (event: React.PointerEvent) => {
+    dragStartX.current = event.clientX;
+  };
+
+  const handlePointerUp = (event: React.PointerEvent) => {
+    if (dragStartX.current === null || !hasMultiple) {
+      dragStartX.current = null;
+      return;
+    }
+    const deltaX = event.clientX - dragStartX.current;
+    dragStartX.current = null;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
+    if (deltaX > 0) {
+      goPrev();
+    } else {
+      goNext();
+    }
+  };
+
   if (!current) return null;
 
   return (
@@ -64,93 +88,22 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
         backdropFilter: "blur(8px)",
       }}
     >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="بستن"
-        style={{
-          position: "absolute",
-          top: "24px",
-          left: "24px",
-          width: "44px",
-          height: "44px",
-          borderRadius: "50%",
-          border: "1px solid rgba(212,175,55,0.4)",
-          background: "rgba(11,11,13,0.85)",
-          color: "#D4AF37",
-          fontSize: "20px",
-          lineHeight: 1,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1002,
-        }}
-      >
-        ✕
-      </button>
-
-      {hasMultiple && (
-        <>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              goPrev();
-            }}
-            aria-label="عکس قبلی"
-            style={{
-              position: "absolute",
-              left: "24px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: "52px",
-              height: "52px",
-              borderRadius: "50%",
-              border: "1px solid rgba(212,175,55,0.4)",
-              background: "rgba(11,11,13,0.85)",
-              color: "#D4AF37",
-              fontSize: "24px",
-              cursor: "pointer",
-              zIndex: 1002,
-            }}
-          >
-            ←
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              goNext();
-            }}
-            aria-label="عکس بعدی"
-            style={{
-              position: "absolute",
-              right: "24px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: "52px",
-              height: "52px",
-              borderRadius: "50%",
-              border: "1px solid rgba(212,175,55,0.4)",
-              background: "rgba(11,11,13,0.85)",
-              color: "#D4AF37",
-              fontSize: "24px",
-              cursor: "pointer",
-              zIndex: 1002,
-            }}
-          >
-            →
-          </button>
-        </>
-      )}
-
       <div
         onClick={(event) => event.stopPropagation()}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => {
+          dragStartX.current = null;
+        }}
         style={{
           position: "relative",
           width: "min(92vw, 1200px)",
           height: "min(85vh, 800px)",
+          borderRadius: "18px",
+          overflow: "hidden",
+          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
+          touchAction: "pan-y",
+          cursor: hasMultiple ? "grab" : "default",
         }}
       >
         <WatermarkedImage
@@ -166,11 +119,12 @@ export default function ImageLightbox({ images, activeIndex, onClose, onNavigate
         <div
           style={{
             position: "absolute",
-            bottom: "24px",
+            bottom: "20px",
             left: "50%",
             transform: "translateX(-50%)",
-            color: "rgba(255,255,255,0.6)",
-            fontSize: "13px",
+            color: "rgba(255,255,255,0.55)",
+            fontSize: "12px",
+            letterSpacing: "1px",
             zIndex: 1002,
           }}
         >
