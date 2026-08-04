@@ -154,13 +154,35 @@ export default function CinematicConstruction() {
       کاربر، update() یک‌بار دیگر صدا زده می‌شود تا فریم بلافاصله
       با موقعیت فعلی اسکرول همگام شود.
     */
-    window.addEventListener("scroll", update, { passive: true });
+    /*
+      رفع باگ «فیلم صفحه خانه کند شده»:
+      قبلاً update() مستقیم و بدون هیچ throttle داخل رویداد scroll
+      اجرا می‌شد. روی اسکرول معمولی این رویداد به‌ازای هر پیکسل چندین
+      بار شلیک می‌شود (خصوصاً با تاچ‌پد که خیلی متراکم‌تر از ماوس
+      رویداد می‌فرستد)، و هر بار مقداردهی video.currentTime یک seek
+      واقعی روی ویدیو انجام می‌دهد — این یعنی ده‌ها seek در ثانیه که
+      باعث لگ و عقب‌افتادگی فریم می‌شود. الان با requestAnimationFrame
+      اجرای واقعی را به حداکثر یک‌بار در هر فریم رندر مرورگر (معمولاً
+      ۶۰ بار در ثانیه) محدود می‌کنیم؛ رویدادهای اضافه‌ی بین این‌ها
+      نادیده گرفته می‌شوند، بدون افت محسوس در حس همگام‌بودن با اسکرول.
+    */
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        update();
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
     video.addEventListener("loadeddata", update);
     update();
 
     return () => {
-      window.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", onScroll);
       video.removeEventListener("loadeddata", update);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -267,6 +289,30 @@ export default function CinematicConstruction() {
             position: "absolute", inset: 0, zIndex: 2,
             background:
               "linear-gradient(to bottom,rgba(5,5,5,0.6) 0%,rgba(5,5,5,0) 20%,rgba(5,5,5,0) 65%,rgba(5,5,5,0.9) 100%)",
+          }}
+        />
+
+        {/*
+          راه‌حل موقت برای واترمارک «Media.io AI Gen»:
+          این نوشته بخشی از خودِ پیکسل‌های فایل construction.mp4 است،
+          پس با کد قابل حذف کامل نیست — راه‌حل قطعی این است که همین
+          ویدیو را بدون واترمارک دوباره export کنی و در
+          public/videos/construction.mp4 جایگزین فایل فعلی کنی.
+          تا آن زمان، این باکس تیره‌ی گوشه‌ی پایین‌راست فقط همان ناحیه
+          را می‌پوشاند (مطابق موقعیتی که در اسکرین‌شات دیده شد). اگر
+          واترمارک در ویدیوی نهایی جای دیگری بود، فقط کافی‌ست
+          right/bottom/width/height زیر را تغییر بدهی.
+        */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            width: "clamp(90px, 16vw, 170px)",
+            height: "clamp(34px, 5vw, 54px)",
+            zIndex: 3,
+            background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
           }}
         />
 

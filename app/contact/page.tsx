@@ -296,15 +296,30 @@ export default function ContactPage() {
                   />
                 </div>
 
-                {/* Honeypot field — hidden from sighted and screen-reader users, bots fill it anyway */}
+                {/*
+                  Honeypot field — hidden from sighted and screen-reader users, bots fill it anyway.
+
+                  رفع باگ موبایل: قبلاً این فیلد با `left: -9999px` و بدون هیچ
+                  والد position:relative مخفی می‌شد. چون هیچ والد positioned‌ای
+                  نداشت، مرورگر آن را نسبت به کل سند جابه‌جا می‌کرد و همین باعث
+                  می‌شد عرض واقعی صفحه در موبایل به‌شدت بزرگ‌تر از viewport
+                  محاسبه شود — دقیقاً همان باگ «صفحه ریز و جمع‌شده دیده می‌شود»
+                  که قبلاً در layout.tsx برای کل سایت رفع شده بود، ولی این نمونه
+                  مخصوص همین صفحه بود. الگوی زیر (بدون آفست منفی، فقط 1px×1px و
+                  clip) استاندارد و ایمن است و چنین باگی ایجاد نمی‌کند.
+                */}
                 <div
                   aria-hidden="true"
                   style={{
                     position: "absolute",
-                    left: "-9999px",
                     width: "1px",
                     height: "1px",
+                    padding: 0,
+                    margin: "-1px",
                     overflow: "hidden",
+                    clip: "rect(0,0,0,0)",
+                    whiteSpace: "nowrap",
+                    border: 0,
                   }}
                 >
                   <input

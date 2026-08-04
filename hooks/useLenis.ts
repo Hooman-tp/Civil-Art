@@ -22,6 +22,17 @@ export function useLenis() {
     const lenis = new Lenis({
       smoothWheel: true,
       duration: 1.2,
+      /*
+        رفع باگ «با تاچ‌پد لپ‌تاپ اسکرول نمی‌شود، فقط ماوس کار می‌کند»:
+        بدون wheelMultiplier مشخص، بعضی درایورهای تاچ‌پد (خصوصاً روی
+        ویندوز با Precision Touchpad) دلتای بسیار کوچک‌تری نسبت به
+        ماوس ارسال می‌کنند و Lenis عملاً حرکت محسوسی تولید نمی‌کند.
+        wheelMultiplier: 1 مقدار توصیه‌شده‌ی رسمی Lenis است و پاسخ‌گویی
+        به همه‌ی ورودی‌های wheel (چه ماوس چه تاچ‌پد) را یکسان می‌کند.
+      */
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+      gestureOrientation: "vertical",
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
