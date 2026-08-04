@@ -52,7 +52,7 @@ export default function Header() {
             width={140}
             height={93}
             priority
-            style={{ height: "40px", width: "auto" }}
+            className="header-logo"
           />
         </Link>
 
@@ -167,9 +167,16 @@ export default function Header() {
       )}
 
       <style>{`
+        /* رفع درخواست: لوگو روی دسکتاپ (ویندوز) کوچیک بود، بزرگ‌تر شد؛
+           روی موبایل هم یک‌مقدار (نه به‌اندازه دسکتاپ) بزرگ‌تر شد. */
+        .header-logo {
+          height: 58px !important;
+          width: auto !important;
+        }
         @media (max-width: 900px) {
           .desktop-nav { display: none !important; }
           .hamburger-btn { display: flex !important; }
+          .header-logo { height: 48px !important; }
         }
         @media (min-width: 901px) {
           .mobile-nav { display: none !important; }

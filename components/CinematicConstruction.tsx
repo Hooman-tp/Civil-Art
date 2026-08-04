@@ -295,7 +295,7 @@ export default function CinematicConstruction() {
               bottom: 0,
               right: 0,
               width: "clamp(90px, 18vw, 190px)",
-              height: "clamp(0px, 6vw, 00px)",
+              height: "clamp(36px, 6vw, 60px)",
               zIndex: 3,
               background: "linear-gradient(135deg, rgba(5,5,5,0.97), rgba(5,5,5,0.85))",
             }}
@@ -308,7 +308,7 @@ export default function CinematicConstruction() {
 
           .cinematic-video-frame {
             width: 40%;
-            height: ${isVertical ? "100vh" : "100%"};
+            height: ${isVertical ? "108vh" : "100%"};
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -316,29 +316,34 @@ export default function CinematicConstruction() {
           }
 
           /*
-            رفع باگ زوم/کراپ روی موبایل:
-            روی دسکتاپ، ستون سینمایی ۴۰٪ عرض عمداً با cover برش‌خورده
-            نمایش داده می‌شود (طراحی آگاهانه). روی موبایل، فریم دیگر
-            یک ارتفاع ثابت (100vh) ندارد؛ با aspect-ratio واقعیِ ویدیو
-            محاسبه می‌شود تا خودِ فریم دقیقاً هم‌اندازه‌ی محتوای واقعی
-            ویدیو باشد — یعنی نه برشی می‌افتد (cover) و نه فضای خالیِ
-            داخلی (contain با جعبه‌ی نامتناسب). فاصله‌ی طبیعیِ بالا/پایین
-            که به‌خاطر فرق نسبت‌ابعاد صفحه‌ی گوشی باقی می‌ماند، با
-            لایه‌ی بلور پشت آن (blurRef) پر می‌شود، نه یک نوار خالیِ تیره.
+            توجه: نسخه‌ی قبلی اینجا سعی می‌کرد روی موبایل با محاسبه‌ی
+            aspect-ratio واقعی ویدیو، فریم را بدون هیچ crop نمایش دهد.
+            همین محاسبه منشاء باگ «نوار تیره‌ی بالای فیلم» بود (توضیح
+            کامل در کامنت داخل media query پایین). الان دوباره ساده و
+            یکسان با دسکتاپ شد: همیشه cover و تمام کادر را پر می‌کند.
           */
           @media (max-width: 768px) {
+            /*
+              رفع باگ «فاصله/گپ تیره بالای فیلم روی موبایل»:
+              روش قبلی سعی می‌کرد ارتفاع فریم را دقیقاً برابر
+              aspect-ratio واقعی ویدیو حساب کند (calc(100vw / aspect))
+              تا بدون crop نمایش داده شود. اما چون این فریم با
+              top:50%/left:50% + translate(-50%,-50%) وسط‌چین است،
+              هر بار که این عدد کمی کمتر از 100vh می‌شد (یا قبل از
+              رسیدن aspect واقعی، برای یک لحظه undefined بود)، بالا و
+              پایین فریم از پس‌زمینه‌ی #050505 خودِ wrapper پر می‌شد —
+              همان نوار تیره‌ی زیر هدر که گزارش شده بود. الان روی
+              موبایل هم دقیقاً مثل دسکتاپ، فریم همیشه ۱۰۰٪ عرض و ۱۰۰٪
+              ارتفاعِ کانتینر (که خودش 100vh است) را با object-fit:cover
+              پر می‌کند — یعنی هیچ‌وقت گپ خالی نمی‌ماند، به قیمتِ کمی
+              crop در گوشه‌های ویدیوی عمودی (که قابل‌قبول‌تر از یک نوار
+              تیره‌ی توپر است).
+            */
             .cinematic-video-frame {
-              width: 110% !important;
-              height: ${
-                isVertical
-                  ? aspect
-                    ? `calc(100vw / ${aspect})`
-                    : "100vh"
-                  : "100%"
-              } !important;
-              max-height: 100vh !important;
+              width: 100% !important;
+              height: 100% !important;
             }
-            .cinematic-label-top { top: 1.2rem !important; right: 1.2rem !important; }
+            .cinematic-label-top { top: 5.5rem !important; right: 1.2rem !important; }
             .cinematic-label-top span { font-size: 10px !important; letter-spacing: 3px !important; }
             .cinematic-label-top div { width: 24px !important; }
             .cinematic-dots { left: 1rem !important; gap: 0.6rem !important; }
@@ -366,9 +371,19 @@ export default function CinematicConstruction() {
           <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        <div className="cinematic-label-top" style={{ position: "absolute", top: "2rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 1, background: "#D4AF37" }} />
-          <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700 }}>مراحل ساخت</span>
+        {/*
+          رفع باگ «مراحل ساخت پشت لوگوی هدر پنهان می‌شود»:
+          هدر سایت position:fixed دارد و همیشه روی همه‌چیز (z-index:100)
+          می‌نشیند. قبلاً این برچسب در top:2rem بود که دقیقاً زیر هدر و
+          پشت لوگو قرار می‌گرفت. الان به‌اندازه‌ی ارتفاع واقعی هدر
+          (~90px دسکتاپ / ~76px موبایل) پایین‌تر آمده و یک سایه‌ی متن
+          هم گرفته تا روی تصویر روشن ویدیو هم واضح و پررنگ خوانده شود
+          (قبلاً چون فقط رنگ طلایی کم‌کنتراست بود، روی فریم‌های روشن
+          ویدیو کم‌رنگ به‌نظر می‌رسید).
+        */}
+        <div className="cinematic-label-top" style={{ position: "absolute", top: "6.5rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 1, background: "#D4AF37", boxShadow: "0 1px 4px rgba(0,0,0,0.6)" }} />
+          <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, textShadow: "0 1px 6px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)" }}>مراحل ساخت</span>
         </div>
 
         <div className="cinematic-dots" style={{ position: "absolute", left: "2rem", top: "50%", transform: "translateY(-50%)", zIndex: 10, display: "flex", flexDirection: "column", gap: "1rem" }}>
