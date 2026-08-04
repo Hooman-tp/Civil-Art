@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import CinematicConstruction from "../components/CinematicConstruction";
 import Hero from "../components/Hero";
 import Testimonials from "../components/Testimonials";
@@ -11,10 +12,9 @@ import { getFeaturedProjects } from "../lib/projectsData";
 import { getProjectCover } from "../lib/getProjectImages";
 
 /**
- * بافت ظریف «کاغذ نقشه‌کشی مهندسی» (blueprint grid) به‌عنوان امضای
- * بصری این صفحه — به‌جای پس‌زمینه‌ی تخت و یک‌دست قبلی، خطوط طلاییِ
- * بسیار کم‌رنگ که به هویت «مهندسی» شرکت اشاره می‌کند، بدون اینکه با
- * محتوا رقابت کند.
+ * بافت ظریف «کاغذ نقشه‌کشی مهندسی» (blueprint grid) — امضای بصری
+ * بخش‌های تیره‌ی این صفحه: خطوط طلاییِ خیلی کم‌رنگ که به هویت
+ * «مهندسی» شرکت اشاره می‌کند، بدون رقابت با محتوا.
  */
 const BLUEPRINT_GRID = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><path d="M48 0.5H0V48" fill="none" stroke="rgba(212,175,55,0.07)" stroke-width="1"/></svg>'
@@ -105,78 +105,90 @@ export default function Home() {
       {/* ── روند همکاری (سفید) ── */}
       <ProcessTimeline />
 
-      {/* ── پیش‌نمایش خدمات (مشکی + بافت نقشه‌کشی) ── */}
+      {/* ── پیش‌نمایش خدمات (مشکی + بافت نقشه‌کشی + قاب کنگره‌ای) ── */}
       <section
         style={{
           background: "#0b0b0d",
           backgroundImage: BLUEPRINT_GRID,
           backgroundRepeat: "repeat",
-          padding: "110px 24px",
+          padding: "90px 24px 110px",
         }}
       >
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <Eyebrow text="خدمات تخصصی" />
-            <h2 style={{ fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 900 }}>
-              آنچه ارائه می‌دهیم
-            </h2>
+        <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <SectionTab icon={<IconBuilding />} title="خدمات تخصصی" subtitle="SERVICES" />
           </div>
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-              gap: "24px",
+              border: "1px solid rgba(212,175,55,0.18)",
+              borderRadius: "26px",
+              background: "rgba(255,255,255,0.015)",
+              padding: "52px 32px 40px",
             }}
           >
-            <ServiceCard
-              icon={<IconBuilding />}
-              title="طراحی ساختمان های ویلایی - مسکونی-اداری و تجاری"
-            />
-            <ServiceCard icon={<IconClipboardCheck />} title="نظارت کارگاهی" />
-          </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+                gap: "24px",
+              }}
+            >
+              <ServiceCard
+                icon={<IconBuilding />}
+                title="طراحی ساختمان های ویلایی - مسکونی-اداری و تجاری"
+              />
+              <ServiceCard icon={<IconClipboardCheck />} title="نظارت کارگاهی" />
+            </div>
 
-          <div style={{ textAlign: "center", marginTop: "48px" }}>
-            <Link href="/services" className="btn-outline-gold">
-              مشاهده همه خدمات
-            </Link>
+            <div style={{ textAlign: "center", marginTop: "44px" }}>
+              <Link href="/services" className="btn-outline-gold">
+                مشاهده همه خدمات
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── پیش‌نمایش پروژه‌ها (مشکی) ── */}
-      <section style={{ background: "#050505", padding: "110px 24px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <Eyebrow text="نمونه کارها" />
-            <h2 style={{ fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 900 }}>
-              پروژه‌های برجسته
-            </h2>
+      {/* ── پیش‌نمایش پروژه‌ها (مشکی + قاب کنگره‌ای) ── */}
+      <section style={{ background: "#050505", padding: "90px 24px 110px" }}>
+        <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <SectionTab icon={<IconGallery />} title="نمونه کارها" subtitle="PROJECTS" />
           </div>
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-              gap: "28px",
+              border: "1px solid rgba(212,175,55,0.18)",
+              borderRadius: "26px",
+              background: "rgba(255,255,255,0.015)",
+              padding: "52px 24px 44px",
             }}
           >
-            {featuredProjects.map((p) => (
-              <ProjectCard
-                key={p.slug}
-                href={`/projects/${p.slug}`}
-                coverSrc={getProjectCover(p.slug)}
-                alt={p.name || p.tag || p.slug}
-                title={p.name || p.slug}
-                tag={p.tag || p.category}
-              />
-            ))}
-          </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+                gap: "40px 28px",
+              }}
+            >
+              {featuredProjects.map((p) => (
+                <ProjectCard
+                  key={p.slug}
+                  href={`/projects/${p.slug}`}
+                  coverSrc={getProjectCover(p.slug)}
+                  alt={p.name || p.tag || p.slug}
+                  title={p.name || p.slug}
+                  tag={p.tag || p.category}
+                />
+              ))}
+            </div>
 
-          <div style={{ textAlign: "center", marginTop: "48px" }}>
-            <Link href="/projects" className="btn-outline-gold">
-              مشاهده همه پروژه‌ها
-            </Link>
+            <div style={{ textAlign: "center", marginTop: "44px" }}>
+              <Link href="/projects" className="btn-outline-gold">
+                مشاهده همه پروژه‌ها
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -226,7 +238,9 @@ export default function Home() {
   );
 }
 
-function StatCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+/* ── بلوک‌های ساختاری ── */
+
+function StatCard({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
     <div
       className="stat-card"
@@ -267,7 +281,27 @@ function EyebrowLight({ text }: { text: string }) {
   );
 }
 
-function ServiceCard({ icon, title }: { icon: React.ReactNode; title: string }) {
+/**
+ * برچسب کنگره‌ای (section tab) — امضای بصری این نسخه از صفحه‌ی اصلی:
+ * یک برچسب معلق، شبیه زبانه‌ی پوشه، که از بالای هر پنل قاب‌دار آویزان
+ * است. الهام‌گرفته از ساختار سایت مرجعی که فرستادی، اما با پالت
+ * طلایی/مشکی برند Civil-Art (نه رنگ‌های آن سایت).
+ */
+function SectionTab({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
+  return (
+    <div className="section-tab">
+      <div style={{ color: "#D4AF37", display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+        {icon}
+      </div>
+      <div style={{ color: "#fff", fontWeight: 900, fontSize: "14px" }}>{title}</div>
+      <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "9px", letterSpacing: "1.5px", marginTop: "2px" }}>
+        {subtitle}
+      </div>
+    </div>
+  );
+}
+
+function ServiceCard({ icon, title }: { icon: ReactNode; title: string }) {
   return (
     <div
       className="service-card"
@@ -321,6 +355,17 @@ function IconClipboardCheck() {
       <rect x="5" y="4" width="14" height="17" rx="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9 12.5L11 14.5L15 10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconGallery() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
     </svg>
   );
 }

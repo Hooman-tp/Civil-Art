@@ -29,20 +29,20 @@ export default function WatermarkedImage({ imageClassName, alt, ...imageProps }:
           position: "absolute",
           bottom: "3%",
           left: "3%",
-          width: "15%",
-          maxWidth: "90px",
-          minWidth: "42px",
-          aspectRatio: "500 / 216",
+          width: "26%",
+          maxWidth: "150px",
+          minWidth: "72px",
+          aspectRatio: "1000 / 665",
           opacity: 0.92,
           pointerEvents: "none",
           filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
         }}
       >
         <Image
-          src="/logo-icon.png"
+          src="/logo.png"
           alt=""
           fill
-          sizes="90px"
+          sizes="150px"
           style={{ objectFit: "contain" }}
         />
       </div>

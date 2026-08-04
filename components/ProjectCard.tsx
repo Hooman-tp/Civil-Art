@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import WatermarkedImage from "./WatermarkedImage";
 
 export type ProjectCardProps = {
@@ -13,24 +12,11 @@ export type ProjectCardProps = {
   description?: string;
   year?: string;
   /**
-   * اگر مقدار داده شود، کلیک روی بدنه‌ی کارت این تابع را صدا می‌زند
-   * (برای باز کردن Lightbox) به‌جای رفتن مستقیم به صفحه‌ی پروژه.
-   * دکمه‌ی «مشاهده جزئیات» در هر دو حالت همیشه به صفحه‌ی پروژه می‌رود.
+   * اگر مقدار داده شود، کلیک روی عکس این تابع را صدا می‌زند (برای باز
+   * کردن Lightbox) به‌جای رفتن مستقیم به صفحه‌ی پروژه. دکمه‌ی «مشاهده
+   * جزئیات» در پنل زیرین همیشه، در هر دو حالت، به صفحه‌ی پروژه می‌رود.
    */
   onImageClick?: () => void;
-};
-
-const cardBaseStyle: CSSProperties = {
-  background: "#0b0b0d",
-  aspectRatio: "4 / 3",
-  position: "relative",
-  overflow: "hidden",
-  borderRadius: "20px",
-  border: "1px solid rgba(212,175,55,0.15)",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-  display: "block",
-  textDecoration: "none",
-  color: "inherit",
 };
 
 export default function ProjectCard({
@@ -43,8 +29,19 @@ export default function ProjectCard({
   year,
   onImageClick,
 }: ProjectCardProps) {
-  const overlayContent = (
-    <>
+  const imageBox = (
+    <div
+      className="project-card-image-box"
+      style={{
+        position: "relative",
+        aspectRatio: "4 / 3",
+        borderRadius: "22px",
+        overflow: "hidden",
+        background: "#0b0b0d",
+        border: "1px solid rgba(212,175,55,0.16)",
+        boxShadow: "0 12px 28px rgba(0,0,0,0.4)",
+      }}
+    >
       {coverSrc && (
         <WatermarkedImage
           src={coverSrc}
@@ -54,68 +51,78 @@ export default function ProjectCard({
           imageClassName="project-card-image"
         />
       )}
-
       <div
+        aria-hidden="true"
         style={{
           position: "absolute",
           inset: 0,
-          background:
-            "radial-gradient(circle at 30% 20%, rgba(212,175,55,0.14) 0%, transparent 60%), linear-gradient(180deg, rgba(5,5,5,0) 40%, rgba(5,5,5,0.92) 100%)",
+          background: "linear-gradient(180deg, rgba(5,5,5,0) 58%, rgba(5,5,5,0.6) 100%)",
           pointerEvents: "none",
         }}
       />
+    </div>
+  );
 
-      <div style={{ position: "absolute", bottom: 0, right: 0, left: 0, padding: "26px" }}>
+  return (
+    <div className="project-card">
+      {onImageClick ? (
+        <div
+          onClick={onImageClick}
+          role="button"
+          tabIndex={0}
+          style={{ cursor: coverSrc ? "zoom-in" : "default" }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onImageClick();
+            }
+          }}
+        >
+          {imageBox}
+        </div>
+      ) : (
+        <Link href={href} style={{ display: "block" }} aria-label={title}>
+          {imageBox}
+        </Link>
+      )}
+
+      {/* پنل اطلاعات، عمداً روی لبه‌ی پایین عکس روکش می‌شود تا حس عمق و لایه‌بندی بدهد */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          margin: "-34px 16px 0",
+          background: "#111113",
+          border: "1px solid rgba(212,175,55,0.22)",
+          borderRadius: "16px",
+          padding: "18px 20px",
+          boxShadow: "0 10px 26px rgba(0,0,0,0.35)",
+        }}
+      >
         {tag && (
-          <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "2px", marginBottom: "8px" }}>
+          <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "1.5px", marginBottom: "6px" }}>
             {tag}
           </div>
         )}
-        <h3 style={{ fontSize: "20px", fontWeight: 700, marginBottom: description ? "8px" : 0, color: "#fff" }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff", marginBottom: description ? "6px" : "14px", lineHeight: 1.6 }}>
           {title}
         </h3>
         {description && (
-          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "13px", lineHeight: 1.8, marginBottom: "8px" }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.8, marginBottom: "14px" }}>
             {description}
           </p>
         )}
-        {year && <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>{year}</span>}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+          {year ? (
+            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>{year}</span>
+          ) : (
+            <span />
+          )}
+          <Link href={href} className="project-card-cta">
+            مشاهده جزئیات ←
+          </Link>
+        </div>
       </div>
-    </>
-  );
-
-  if (!onImageClick) {
-    return (
-      <Link href={href} className="project-card" style={cardBaseStyle}>
-        {overlayContent}
-        <span className="project-card-cta">مشاهده جزئیات ←</span>
-      </Link>
-    );
-  }
-
-  return (
-    <div
-      className="project-card"
-      style={{ ...cardBaseStyle, cursor: "zoom-in" }}
-      onClick={onImageClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onImageClick();
-        }
-      }}
-    >
-      {overlayContent}
-      <Link
-        href={href}
-        onClick={(event) => event.stopPropagation()}
-        className="project-card-cta"
-        aria-label={`مشاهده جزئیات ${title}`}
-      >
-        مشاهده جزئیات ←
-      </Link>
     </div>
   );
 }

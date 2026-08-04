@@ -67,35 +67,40 @@ textarea:focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
+
 /* ═══════════════ کارت پروژه (صفحه اصلی، پروژه‌ها، گالری) ═══════════════ */
-.project-card {
-  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+.project-card-image-box {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
-.project-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 46px rgba(212, 175, 55, 0.18), 0 12px 30px rgba(0, 0, 0, 0.45);
+.project-card:hover .project-card-image-box {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(212, 175, 55, 0.16), 0 12px 30px rgba(0, 0, 0, 0.45);
   border-color: rgba(212, 175, 55, 0.4);
 }
-.project-card-image { transition: transform 0.6s ease; }
-.project-card:hover .project-card-image { transform: scale(1.08); }
+.project-card-image {
+  transition: transform 0.6s ease;
+}
+.project-card:hover .project-card-image {
+  transform: scale(1.08);
+}
 .project-card-cta {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.85);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: linear-gradient(180deg, #efd98a, #d4af37);
   color: #000;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 10px 24px;
+  padding: 8px 16px;
   border-radius: 999px;
   text-decoration: none;
-  opacity: 0;
-  transition: opacity 0.25s ease, transform 0.25s ease;
   white-space: nowrap;
-  z-index: 3;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.project-card:hover .project-card-cta { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.project-card-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(212, 175, 55, 0.35);
+}
 
 /* ═══════════════ تامبنیل گالری داخل صفحه‌ی هر پروژه ═══════════════ */
 .gallery-thumb {
@@ -106,5 +111,75 @@ textarea:focus-visible {
   box-shadow: 0 12px 30px rgba(212, 175, 55, 0.15);
   border-color: rgba(212, 175, 55, 0.4);
 }
-.gallery-thumb-image { transition: transform 0.5s ease; }
-.gallery-thumb:hover .gallery-thumb-image { transform: scale(1.08); }
+.gallery-thumb-image {
+  transition: transform 0.5s ease;
+}
+.gallery-thumb:hover .gallery-thumb-image {
+  transform: scale(1.08);
+}
+
+/* ═══════════════ دکمه‌ی خط‌دار طلایی (صفحه اصلی) ═══════════════ */
+.btn-outline-gold {
+  display: inline-block;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+  padding: 12px 32px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+.btn-outline-gold:hover {
+  background: #d4af37;
+  color: #000;
+  border-color: #d4af37;
+  transform: translateY(-2px);
+}
+
+/* ═══════════════ کارت‌های آماری (صفحه اصلی) ═══════════════ */
+.stat-card {
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.1);
+}
+
+/* ═══════════════ کارت‌های خدمات (صفحه اصلی) ═══════════════ */
+.service-card {
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.service-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  transform: scaleX(0);
+  transition: transform 0.35s ease;
+}
+.service-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 16px 40px rgba(212, 175, 55, 0.12);
+}
+.service-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* ═══════════════ برچسب کنگره‌ای بخش‌ها (امضای بصری صفحه اصلی) ═══════════════ */
+.section-tab {
+  width: 132px;
+  margin: 0 auto -1px;
+  padding: 20px 14px 24px;
+  background: linear-gradient(160deg, #17171a, #0b0b0d);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-bottom: none;
+  clip-path: polygon(8% 0%, 92% 0%, 100% 82%, 50% 100%, 0% 82%);
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
