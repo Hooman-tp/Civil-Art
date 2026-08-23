@@ -16,83 +16,91 @@ const VIDEO_SRC = "/videos/construction.mp4";
 */
 const POSTER_SRC = "/videos/construction-poster.jpg";
 
-const STEPS = [
-  { time: 0,    label: "اجرای فونداسیون", desc: "شروع از صفر، با چشمی به آینده" },
-  { time: 0.15, label: "اسکلت بتنی",      desc: "پایه‌های محکم از اعماق زمین" },
-  { time: 0.25, label: "اجرای دیوارها",  desc: "بنیانی که نسل‌ها بر آن خواهند ایستاد" },
-  { time: 0.37, label: "اجرای نما",       desc: "شکل گرفتن رویا در آهن و فولاد" },
-  { time: 0.55, label: "محوطه سازی حیات", desc: "هنر در لایه بیرونی هر سازه" },
-  { time: 0.90, label: "تحویل پروژه",     desc: "لحظه‌ای که افتخار به دست می‌آید" },
-];
+/*
+  ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش). این عدد روی
+  «مسافتی که باید اسکرول کرد» اثر می‌گذارد، ولی سقفِ سرعت پخش را
+  MAX_PLAYBACK_MULTIPLIER پایین‌تر تضمین می‌کند، نه این عدد به‌تنهایی.
+*/
+const SCROLL_TRACK_VH = 450;
 
-/* آستانه‌ی موبایل — دقیقاً همان مقداری که در media query پایین فایل استفاده می‌شود */
-const MOBILE_BREAKPOINT_QUERY = "(max-width: 768px)";
+/*
+  ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه)، برای بخشی از حرکت که
+  «نزدیک هدف» است: باعث می‌شود currentTime به‌جای توقف ناگهانی، با
+  یک کاهش‌سرعتِ نرم به نقطه‌ی درست برسد. مستقل از فریم‌ریت مانیتور
+  کاربر است (بر پایه‌ی dt واقعی بین فریم‌ها محاسبه می‌شود).
+*/
+const TIME_SMOOTHING_TAU = 0.22;
+
+/*
+  رفع اصلیِ «سرعت اسکرول خیلی زیاده / فیلم زودتر از حد جلو می‌ره»:
+  این عدد سقفِ سختِ سرعتِ پخش است، بر حسب «چند برابر سرعت طبیعی
+  ویدیو». یعنی مهم نیست کاربر چقدر تند اسکرول کند — currentTime هیچ‌
+  وقت سریع‌تر از این مقدار به جلو (یا عقب) حرکت نمی‌کند؛ اگر هدف خیلی
+  جلوتر باشد، ویدیو با همین سرعتِ سقف‌زده به‌سمتش «پخش» می‌شود، نه
+  اینکه یک‌مرتبه به آن فریم بپرد. حس نهایی دقیقاً همان چیزی‌ست که
+  خواسته شد: «انگار خود فیلم داره پلی می‌شه»، مستقل از سرعت دست
+  کاربر روی اسکرول/تاچ‌پد. عدد ۱ یعنی دقیقاً سرعت واقعی؛ ۱.۱۵ کمی
+  بالاتر از سرعت واقعی است تا اگر کاربر عمداً بخواهد جلوتر برود حس
+  کندی/گیر نکند، ولی همچنان محسوس «نرم» بماند.
+*/
+const MAX_PLAYBACK_MULTIPLIER = 1.15;
+
+/*
+  آستانه‌ی «عدم تطابق نسبت ابعاد» بین ویدیو و ویوپورت. وقتی این نسبت
+  از این عدد بیشتر شود (مثلاً ویدیوی افقیِ عریض روی گوشیِ عمودیِ
+  باریک)، پر کردن کادر با cover باعث برش شدید و حسِ «زوم‌شده» می‌شود؛
+  در آن حالت به‌جای cover از contain + یک لایه‌ی بلورِ پس‌زمینه
+  استفاده می‌کنیم تا کل فریم دیده شود، بدون برش تهاجمی.
+*/
+const ASPECT_MISMATCH_THRESHOLD = 1.5;
 
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef   = useRef<HTMLVideoElement>(null);
   const blurRef    = useRef<HTMLVideoElement>(null);
 
-  // نوار پیشرفت و بلوک متن/دات‌ها دیگر از طریق useState آپدیت
-  // نمی‌شوند — مستقیم روی DOM نوشته می‌شوند (توضیح کامل پایین‌تر).
-  const progressFillRef = useRef<HTMLDivElement>(null);
-  const textBlockRef    = useRef<HTMLDivElement>(null);
-  const stepIndexRef    = useRef<HTMLDivElement>(null);
-  const stepTitleRef    = useRef<HTMLHeadingElement>(null);
-  const stepDescRef     = useRef<HTMLParagraphElement>(null);
-  const dotRefs         = useRef<Array<HTMLDivElement | null>>([]);
-  const dotCircleRefs   = useRef<Array<HTMLDivElement | null>>([]);
-  const dotNumberRefs   = useRef<Array<HTMLSpanElement | null>>([]);
-  const activeStepRef   = useRef(0);
-
-  const [ready, setReady]           = useState(false);
-  const [isVertical, setIsVertical] = useState(false);
-
-  /*
-    رفع درخواست «فیلم روی موبایل زوم شده / فاصله‌ی سیاه بالای فیلم»:
-    قبلاً روی موبایل، ارتفاع فریم دقیقاً برابر با نسبت ابعاد واقعی
-    ویدیو محاسبه می‌شد (calc(100vw / aspect))، که چون نسبت ابعاد
-    ویدیوی عمودی (~۰.۶۷) با نسبت ابعاد صفحه‌ی گوشی (~۰.۴۶) یکی نیست،
-    فریم از ارتفاع کامل ۱۰۰vh کوتاه‌تر می‌ماند. فضای خالیِ باقی‌مانده
-    (بالا/پایین) با لایه‌ی بلور تیره پر می‌شد که چون filter آن
-    brightness(0.22) دارد، عملاً یک نوار تقریباً سیاه به‌نظر می‌رسد —
-    دقیقاً همان «فاصله‌ی سیاه بالای فیلم» که گزارش شده بود.
-    راه‌حل استاندارد صنعت برای ویدیوی هیرو (که در اپل، سایت‌های جوایز
-    طراحی و... هم استفاده می‌شود): فریم همیشه دقیقاً ۱۰۰vw × ۱۰۰vh را
-    با object-fit:cover پر می‌کند — بدون هیچ فاصله‌ای، در ازای کمی
-    برش طبیعی از دو طرف (که چون object-position روی center است،
-    مساوی و نامحسوس توزیع می‌شود). چون این حالت دیگر نیازی به لایه‌ی
-    بلورِ پس‌زمینه ندارد (چیزی برای پر کردن باقی نمی‌ماند)، آن ویدیوی
-    دوم را روی موبایل اصلاً mount نمی‌کنیم — هم باگ را رفع می‌کند، هم
-    بار دیکود دو ویدیوی هم‌زمان را از موبایل (که معمولاً محدودترین
-    دستگاه است) حذف می‌کند.
-  */
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
-    const applyMatch = () => setIsMobile(mql.matches);
-    applyMatch();
-    mql.addEventListener("change", applyMatch);
-    return () => mql.removeEventListener("change", applyMatch);
-  }, []);
+  const [ready, setReady] = useState(false);
+  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const readDims = () => {
-      setIsVertical(video.videoHeight > video.videoWidth);
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const recomputeFitMode = () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const videoAspect    = video.videoWidth / video.videoHeight;
+      const viewportAspect = window.innerWidth / window.innerHeight;
+      const mismatch =
+        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
+      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
+    };
+
+    const onLoadedMetadata = () => {
+      recomputeFitMode();
       setReady(true);
     };
 
-    video.addEventListener("loadedmetadata", readDims);
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(recomputeFitMode, 150);
+    };
+
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
 
     if (video.readyState >= 1 && video.videoWidth > 0) {
-      readDims();
+      onLoadedMetadata();
     }
 
-    return () => video.removeEventListener("loadedmetadata", readDims);
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -101,124 +109,58 @@ export default function CinematicConstruction() {
     const blur    = blurRef.current;
     if (!wrapper || !video) return;
 
-    /*
-      رفع باگ: قبلاً progress و activeStep با useState ذخیره می‌شدند،
-      یعنی هر بار اسکرول، کل کامپوننت (متن، دات‌ها، نوار پیشرفت)
-      re-render می‌شد. دقیقاً همان الگویی که در Header/ScrollProgress/
-      BackToTop باعث تداخل با پخش ویدیو می‌شد، اینجا هم وجود داشت —
-      با این تفاوت که اینجا حساس‌تر است چون مستقیم روی همان ویدیویی
-      اثر می‌گذارد که داریم اسکراب می‌کنیم. الان همه‌چیز مستقیم روی
-      DOM نوشته می‌شود؛ React فقط یک‌بار (روی mount) رندر می‌کند.
-    */
-    const applyActiveStep = (nextStep: number) => {
-      if (nextStep === activeStepRef.current) return;
-      activeStepRef.current = nextStep;
+    let rafId: number | null = null;
+    let lastTs: number | null = null;
+    let displayedTime = 0;
+    let hasSyncedInitial = false;
 
-      const data = STEPS[nextStep];
-
-      if (stepIndexRef.current) {
-        stepIndexRef.current.textContent = `${toPersian(nextStep + 1)} / ${toPersian(STEPS.length)}`;
-      }
-      if (stepTitleRef.current) stepTitleRef.current.textContent = data.label;
-      if (stepDescRef.current) stepDescRef.current.textContent = data.desc;
-
-      dotRefs.current.forEach((dot, i) => {
-        if (dot) dot.style.opacity = i === nextStep ? "1" : "0.22";
-      });
-      dotCircleRefs.current.forEach((circle, i) => {
-        if (!circle) return;
-        const size = i === nextStep ? "10px" : "4px";
-        circle.style.width = size;
-        circle.style.height = size;
-      });
-      dotNumberRefs.current.forEach((num, i) => {
-        if (num) num.style.display = i === nextStep ? "inline" : "none";
-      });
-
-      // ری‌استارت انیمیشن fade با ترفند force-reflow، بدون remount کردن DOM
-      if (textBlockRef.current) {
-        const el = textBlockRef.current;
-        el.style.animation = "none";
-        void el.offsetWidth;
-        el.style.animation = "caFade 0.5s ease forwards";
-      }
-    };
-
-    const update = () => {
-      /*
-        رفع باگ بالقوه: قبلاً از wrapper.offsetTop + window.scrollY
-        استفاده می‌شد. طبق تجربه‌ی قبلی پروژه، getBoundingClientRect
-        روش صحیح و سازگار با Lenis است، چون مستقیم از موقعیت واقعیِ
-        رندرشده‌ی المان می‌خواند و به فرضیات درباره‌ی نوع اسکرول
-        (native یا شبیه‌سازی‌شده) وابسته نیست.
-      */
+    const getTargetProgress = () => {
       const rect  = wrapper.getBoundingClientRect();
       const total = wrapper.offsetHeight - window.innerHeight;
-      if (total <= 0) return;
-
+      if (total <= 0) return 0;
       const scrolled = -rect.top;
-      const p = Math.max(0, Math.min(1, scrolled / total));
-
-      if (progressFillRef.current) {
-        progressFillRef.current.style.width = `${p * 100}%`;
-      }
-
-      if (video.readyState >= 2 && video.duration) {
-        video.currentTime = p * video.duration;
-        if (blur && blur.readyState >= 2) blur.currentTime = video.currentTime;
-      }
-
-      let step = 0;
-      for (let i = STEPS.length - 1; i >= 0; i--) {
-        if (p >= STEPS[i].time) { step = i; break; }
-      }
-      applyActiveStep(step);
+      return Math.max(0, Math.min(1, scrolled / total));
     };
 
-    /*
-      رفع باگ «سیاه می‌مونه تا اسکرول کنی»:
-      قبلاً update() فقط موقع mount (که هنوز readyState ویدیو کمتر
-      از ۲ است) و روی هر scroll صدا زده می‌شد. یعنی اولین باری که
-      واقعاً currentTime روی یک فریم معتبر ست می‌شد، دقیقاً هم‌زمان
-      با اولین اسکرول کاربر بود — نه زودتر. الان به‌محض اینکه ویدیو
-      به readyState=2 برسه (رویداد loadeddata)، بدون نیاز به اسکرول
-      کاربر، update() یک‌بار دیگر صدا زده می‌شود تا فریم بلافاصله
-      با موقعیت فعلی اسکرول همگام شود.
-    */
-    /*
-      رفع باگ «فیلم صفحه خانه کند شده»:
-      قبلاً update() مستقیم و بدون هیچ throttle داخل رویداد scroll
-      اجرا می‌شد. روی اسکرول معمولی این رویداد به‌ازای هر پیکسل چندین
-      بار شلیک می‌شود (خصوصاً با تاچ‌پد که خیلی متراکم‌تر از ماوس
-      رویداد می‌فرستد)، و هر بار مقداردهی video.currentTime یک seek
-      واقعی روی ویدیو انجام می‌دهد — این یعنی ده‌ها seek در ثانیه که
-      باعث لگ و عقب‌افتادگی فریم می‌شود. الان با requestAnimationFrame
-      اجرای واقعی را به حداکثر یک‌بار در هر فریم رندر مرورگر (معمولاً
-      ۶۰ بار در ثانیه) محدود می‌کنیم؛ رویدادهای اضافه‌ی بین این‌ها
-      نادیده گرفته می‌شوند، بدون افت محسوس در حس همگام‌بودن با اسکرول.
-    */
-    let rafId: number | null = null;
-    const onScroll = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        update();
-      });
+    const tick = (ts: number) => {
+      rafId = requestAnimationFrame(tick);
+
+      if (lastTs === null) lastTs = ts;
+      const dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+
+      if (!(video.readyState >= 2 && video.duration)) return;
+
+      const p = getTargetProgress();
+      const targetTime = p * video.duration;
+
+      if (!hasSyncedInitial) {
+        // اولین باری که ویدیو آماده می‌شود، بدون میرایی مستقیم به فریم درست بپر
+        displayedTime = targetTime;
+        hasSyncedInitial = true;
+      } else {
+        const delta = targetTime - displayedTime;
+        // بخش «نرم» برای فاصله‌های کوچک؛ کاهش‌سرعتِ طبیعی نزدیک هدف
+        const easedStep = delta * (1 - Math.exp(-dt / TIME_SMOOTHING_TAU));
+        // سقفِ سختِ سرعت؛ صرف‌نظر از میزان فاصله، هیچ‌وقت سریع‌تر از این حرکت نمی‌کند
+        const maxStep = MAX_PLAYBACK_MULTIPLIER * dt;
+        const clampedStep = Math.max(-maxStep, Math.min(maxStep, easedStep));
+        displayedTime += clampedStep;
+      }
+
+      video.currentTime = displayedTime;
+      if (blur && blur.readyState >= 2) blur.currentTime = displayedTime;
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    video.addEventListener("loadeddata", update);
-    update();
+    rafId = requestAnimationFrame(tick);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      video.removeEventListener("loadeddata", update);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, []);
 
   return (
-    <div ref={wrapperRef} style={{ height: "300vh", position: "relative" }}>
+    <div ref={wrapperRef} style={{ height: `${SCROLL_TRACK_VH}vh`, position: "relative" }}>
       <div
         className="cinematic-sticky"
         style={{
@@ -229,7 +171,14 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
-        {isVertical && !isMobile && (
+        {/*
+          لایه‌ی بلورِ پس‌زمینه: فقط وقتی fitMode برابر contain است
+          مونت می‌شود (نسبت ابعاد ویدیو و ویوپورت خیلی فرق دارند —
+          معمولاً گوشی عمودی با این ویدیوی افقی). خودِ همین ویدیو با
+          blur/تیرگی دور تا دورِ ویدیوی اصلیِ contain‌شده را پر
+          می‌کند تا نواری خالی/سیاه دیده نشود.
+        */}
+        {fitMode === "contain" && (
           <video
             ref={blurRef}
             className="cinematic-blur-bg"
@@ -250,34 +199,13 @@ export default function CinematicConstruction() {
           />
         )}
 
-        {/*
-          رفع باگ اصلی «واترمارک فقط روی موبایل درست شد، روی ویندوز نه»:
-          قبلاً باکس تیره‌ی پوشاننده‌ی واترمارک، مستقیماً نسبت به کل
-          صفحه (100vw × 100vh) موقعیت‌دهی می‌شد (bottom:0; right:0).
-          روی موبایل این تقریباً درست بود چون ویدیو کل عرض صفحه را
-          می‌گرفت، اما روی دسکتاپ ویدیو فقط یک ستون باریک ۴۰٪ در وسط
-          صفحه است — یعنی باکسِ «راست/پایینِ صفحه» اصلاً روی ویدیو
-          نمی‌افتاد و واترمارک دیده می‌شد.
-          الان یک «فریم» جدید (کانتینر زیر) دقیقاً هم‌اندازه‌ی خودِ
-          ویدیوی نمایش‌داده‌شده است (همان ابعادی که قبلاً روی خودِ
-          تگ video بود) و واترمارک به‌جای صفحه، داخل همین فریم و نسبت
-          به گوشه‌ی خودش پوشانده می‌شود — پس چه ویدیو ۴۰٪ وسط دسکتاپ
-          باشد چه تمام‌عرض موبایل، پوشش همیشه دقیقاً روی گوشه‌ی واقعی
-          ویدیو می‌افتد.
-
-          رفع باگ دوم «فاصله‌ی سیاه بالای فیلم / زوم روی موبایل»:
-          به‌جای letterbox با aspect-ratio (که فاصله‌ی تیره ایجاد
-          می‌کرد)، فریم روی موبایل حالا همیشه دقیقاً ۱۰۰٪ عرض و ۱۰۰٪
-          ارتفاعِ کانتینر sticky را با cover پر می‌کند — همان رفتار
-          استانداردِ ویدیوی هیرو در وب، بدون هیچ فاصله‌ی خالی.
-        */}
         <div
           className="cinematic-video-frame"
           style={{
             position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
+            inset: 0,
+            width: "100%",
+            height: "100%",
             zIndex: 1,
             overflow: "hidden",
           }}
@@ -293,146 +221,36 @@ export default function CinematicConstruction() {
               width: "100%",
               height: "100%",
               display: "block",
-              objectFit: "cover",
+              objectFit: fitMode,
               objectPosition: "center",
             }}
           >
             <source src={VIDEO_SRC} type="video/mp4" />
           </video>
-
-          {/*
-            پوشش واترمارک «Media.io AI Gen»: بخشی از خودِ پیکسل‌های
-            construction.mp4 است، پس با کد قابل حذف کامل نیست — راه‌حل
-            قطعی این است که همین ویدیو را بدون واترمارک دوباره export
-            کنی و در public/videos/construction.mp4 جایگزین فایل فعلی
-            کنی. تا آن زمان، به‌جای یک باکس تیره‌ی لبه‌تیز (که خودش به‌
-            چشم می‌آمد و به‌عنوان یک باگ گزارش شد)، اینجا یک vignette
-            گرد و محوشونده (radial-gradient) از گوشه‌ی پایین‌راستِ خودِ
-            فریم ویدیو کشیده شده — همان سطح پوشش را روی واترمارک حفظ
-            می‌کند، اما به‌جای «مستطیل سیاه»، مثل یک سایه‌ی سینمایی
-            طبیعی گوشه‌ی قاب به‌نظر می‌رسد.
-          */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: "clamp(150px, 26vw, 260px)",
-              height: "clamp(64px, 10vw, 110px)",
-              zIndex: 3,
-              background:
-                "radial-gradient(ellipse at 100% 100%, rgba(5,5,5,0.99) 0%, rgba(5,5,5,0.94) 30%, rgba(5,5,5,0.65) 55%, rgba(5,5,5,0) 85%)",
-            }}
-          />
         </div>
 
         <style>{`
-          @keyframes caFade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
           @keyframes caSpin { to { transform:rotate(360deg); } }
 
-          .cinematic-video-frame {
-            width: 40%;
-            height: ${isVertical ? "108vh" : "100%"};
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .cinematic-text { animation: none !important; }
-          }
-
-          /*
-            رفع باگ زوم/فاصله‌ی سیاه روی موبایل:
-            روی دسکتاپ، ستون سینمایی ۴۰٪ عرض عمداً با cover برش‌خورده
-            نمایش داده می‌شود (طراحی آگاهانه) و اطراف آن با لایه‌ی بلور
-            پر می‌شود. روی موبایل، فریم حالا دقیقاً ۱۰۰٪ عرض و ۱۰۰٪
-            ارتفاعِ صفحه را می‌گیرد (همان رفتار استاندارد ویدیوی هیرو
-            در وب) — یعنی هرگز فاصله‌ی خالی/تیره بالا یا پایین باقی
-            نمی‌ماند. در ازای آن، طبق ماهیت object-fit:cover، ممکن است
-            کمی از دو طرفِ افقیِ ویدیو (نه بالا/پایین) به‌صورت متقارن
-            برش بخورد؛ این دقیقاً همان رفتاری است که در تقریباً همه‌ی
-            سایت‌های حرفه‌ای با ویدیوی هیرو دیده می‌شود.
-          */
-          @media (max-width: 768px) {
-            .cinematic-video-frame {
-              width: 100% !important;
-              height: 100% !important;
-            }
-            .cinematic-blur-bg { display: none !important; }
-            .cinematic-label-top { top: 1rem !important; right: 1.1rem !important; }
-            .cinematic-label-top span { font-size: 9px !important; letter-spacing: 2px !important; }
-            .cinematic-label-top div { width: 20px !important; }
-            .cinematic-dots { left: 1rem !important; gap: 0.55rem !important; }
-            .cinematic-dot-num { display: none !important; }
-            .cinematic-step-index { font-size: 10px !important; letter-spacing: 3px !important; margin-bottom: 0.4rem !important; }
-            .cinematic-text {
-              bottom: 1.75rem !important;
-              right: 1.1rem !important;
-              left: 1.1rem !important;
-              max-width: none !important;
-            }
-            .cinematic-text h2 { font-size: clamp(18px,5.5vw,24px) !important; margin-bottom: 0.4rem !important; }
-            .cinematic-text p { font-size: clamp(11px,2.6vw,13px) !important; line-height: 1.6 !important; }
+          /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
+          @supports (height: 100dvh) {
+            .cinematic-sticky { height: 100dvh !important; }
           }
         `}</style>
 
+        {/*
+          فقط یک گرادیانِ خیلی ملایم بالا (برای خوانا ماندن نوار
+          ناوبریِ ثابتِ سایت روی ویدیو) و یک محوشدگیِ سبک پایین (برای
+          گذر نرم به سکشن بعدی). هیچ متن/برچسب/دایره‌ای دیگر روی
+          ویدیو نمایش داده نمی‌شود.
+        */}
         <div
           style={{
-            position: "absolute", inset: 0, zIndex: 2,
+            position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
             background:
-              "linear-gradient(to bottom,rgba(5,5,5,0.6) 0%,rgba(5,5,5,0) 20%,rgba(5,5,5,0) 65%,rgba(5,5,5,0.9) 100%)",
+              "linear-gradient(to bottom,rgba(5,5,5,0.45) 0%,rgba(5,5,5,0) 18%,rgba(5,5,5,0) 78%,rgba(5,5,5,0.5) 100%)",
           }}
         />
-
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "rgba(255,255,255,0.06)", zIndex: 10 }}>
-          <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
-        </div>
-
-        <div className="cinematic-label-top" style={{ position: "absolute", top: "2rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 1, background: "#D4AF37" }} />
-          <span style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700 }}>مراحل ساخت</span>
-        </div>
-
-        <div className="cinematic-dots" style={{ position: "absolute", left: "2rem", top: "50%", transform: "translateY(-50%)", zIndex: 10, display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {STEPS.map((_, i) => (
-            <div
-              key={i}
-              ref={(el) => { dotRefs.current[i] = el; }}
-              style={{ display: "flex", alignItems: "center", gap: 8, opacity: i === 0 ? 1 : 0.22 }}
-            >
-              <div
-                ref={(el) => { dotCircleRefs.current[i] = el; }}
-                style={{ width: i === 0 ? 10 : 4, height: i === 0 ? 10 : 4, borderRadius: "50%", background: "#D4AF37", transition: "all 0.3s" }}
-              />
-              <span
-                ref={(el) => { dotNumberRefs.current[i] = el; }}
-                className="cinematic-dot-num"
-                style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 3, fontWeight: 700, display: i === 0 ? "inline" : "none" }}
-              >
-                {String(i + 1).padStart(2, "0")}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div
-          ref={textBlockRef}
-          className="cinematic-text"
-          style={{
-            position: "absolute", bottom: "3.5rem", right: "3rem", zIndex: 10, maxWidth: 500,
-            animation: "caFade 0.5s ease forwards",
-          }}
-        >
-          <div ref={stepIndexRef} className="cinematic-step-index" style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 5, fontWeight: 700, marginBottom: "0.6rem" }}>
-            {toPersian(1)} / {toPersian(STEPS.length)}
-          </div>
-          <h2 ref={stepTitleRef} style={{ color: "#fff", fontSize: "clamp(28px,4.5vw,62px)", fontWeight: 900, lineHeight: 1.15, marginBottom: "0.6rem" }}>
-            {STEPS[0].label}
-          </h2>
-          <p ref={stepDescRef} style={{ color: "rgba(255,255,255,0.45)", fontSize: "clamp(13px,1vw,15px)", lineHeight: 1.8, fontWeight: 300 }}>
-            {STEPS[0].desc}
-          </p>
-          <div style={{ width: 40, height: 2, background: "#D4AF37", marginTop: "1rem" }} />
-        </div>
 
         {!ready && (
           <div style={{ position: "absolute", inset: 0, zIndex: 25, background: "#050505", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -445,8 +263,4 @@ export default function CinematicConstruction() {
       </div>
     </div>
   );
-}
-
-function toPersian(n: number) {
-  return n.toString().replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
 }
