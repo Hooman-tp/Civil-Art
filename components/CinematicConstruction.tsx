@@ -17,12 +17,7 @@ const VIDEO_SRC = "/videos/construction.mp4";
 const POSTER_SRC = "/videos/construction-poster.jpg";
 
 const STEPS = [
-  { time: 0,    label: "اجرای فونداسیون", desc: "شروع از صفر، با چشمی به آینده" },
-  { time: 0.15, label: "اسکلت بتنی",      desc: "پایه‌های محکم از اعماق زمین" },
-  { time: 0.25, label: "اجرای دیوارها",  desc: "بنیانی که نسل‌ها بر آن خواهند ایستاد" },
-  { time: 0.37, label: "اجرای نما",       desc: "شکل گرفتن رویا در آهن و فولاد" },
-  { time: 0.55, label: "محوطه سازی حیات", desc: "هنر در لایه بیرونی هر سازه" },
-  { time: 0.90, label: "تحویل پروژه",     desc: "لحظه‌ای که افتخار به دست می‌آید" },
+  { time: 0,    label: " ", desc: "شروع آینده ای زیبا برای خود و خانواده" },
 ];
 
 /*
