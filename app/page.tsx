@@ -10,15 +10,7 @@ import NewsletterSignup from "../components/NewsletterSignup";
 import ProjectCard from "../components/ProjectCard";
 import { getFeaturedProjects } from "../lib/projectsData";
 import { getProjectCover } from "../lib/getProjectImages";
-
-/**
- * بافت ظریف «کاغذ نقشه‌کشی مهندسی» (blueprint grid) — امضای بصری
- * بخش‌های تیره‌ی این صفحه: خطوط طلاییِ خیلی کم‌رنگ که به هویت
- * «مهندسی» شرکت اشاره می‌کند، بدون رقابت با محتوا.
- */
-const BLUEPRINT_GRID = `url("data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><path d="M48 0.5H0V48" fill="none" stroke="rgba(212,175,55,0.07)" stroke-width="1"/></svg>'
-)}")`;
+import { BLUEPRINT_GRID } from "../lib/backgroundPatterns";
 
 export default function Home() {
   const featuredProjects = getFeaturedProjects(6);

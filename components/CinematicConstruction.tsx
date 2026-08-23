@@ -25,43 +25,11 @@ const POSTER_SRC = "/videos/construction-poster.jpg";
 const SCROLL_TRACK_VH = 500;
 
 /*
-  ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه). این تنها اهرمِ سرعت/
-  نرمی است — از قصد هیچ سقفِ سختی روی سرعت پخش گذاشته نشده.
-
-  توضیح یک تصمیم مهم (برای جلوگیری از تکرار یک اشتباه قبلی): نسخه‌ای
-  که یک سقفِ سختِ سرعت داشت (مثلاً «حداکثر ۱.۱۵ برابر سرعت واقعی
-  ویدیو») باعث می‌شد چون این ویدیو ~۶۴ ثانیه‌ست، دیدن کاملش حداقل
-  ~۵۵ ثانیه اسکرولِ پیوسته طول بکشد — مهم نبود کاربر چقدر تند اسکرول
-  می‌کرد. همین سقف باعث یک باگ جدی‌تر هم می‌شد: چون currentTime
-  می‌توانست خیلی عقب‌تر از هدف بماند، وقتی جهت اسکرول ناگهان برعکس
-  می‌شد (پایین بعد بالا)، currentTime اول باید همان «عقب‌ماندگی»ِ
-  انباشته‌شده در جهت قبلی را جبران می‌کرد و همین حس «دیر اقدام کردن»
-  به‌وجود می‌آورد.
-
-  فرمول فعلی (خالص exponential smoothing، بدون سقف) این مشکل را
-  ندارد: currentTime همیشه به‌سمت هدفِ لحظه‌ای می‌رود، با تأخیرِ
-  کوچکِ ثابت (مقیاس‌شده با TAU)، مستقل از اینکه ویدیو چند ثانیه‌ای
-  باشد یا هدف چقدر سریع تغییر کند. یعنی یک اسکرولِ تند همچنان می‌تواند
-  کل ویدیو را در چند ثانیه رد کند (نه دقیقه)، و برعکس‌کردنِ جهت هم
-  بلافاصله منعکس می‌شود.
-
-  عدد کوچیک‌تر = واکنش سریع‌تر/نزدیک‌تر به اسکرول خام؛ عدد بزرگ‌تر =
-  نرم‌تر ولی با کمی تأخیرِ محسوس‌تر. با شبیه‌سازیِ عددیِ چند سناریوی
-  اسکرول (تند/عادی/تغییرِ ناگهانیِ جهت) روی همین ویدیوی ۶۴ثانیه‌ای،
-  ۰.۲۶ نقطه‌ی تعادلِ خوبی بود: در یک اسکرولِ تندِ ۲ثانیه‌ای کل ویدیو
-  در حدود ۳ ثانیه به‌طور کامل «می‌رسد»، و در تغییرِ جهت هیچ تأخیرِ
-  محسوسی قبل از برگشت وجود ندارد.
+  ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه). عدد کوچیک‌تر = واکنش
+  سریع‌تر/نزدیک‌تر به اسکرول خام؛ عدد بزرگ‌تر = نرم‌تر ولی با کمی
+  تأخیرِ محسوس‌تر.
 */
 const TIME_SMOOTHING_TAU = 0.26;
-
-/*
-  آستانه‌ی «عدم تطابق نسبت ابعاد» بین ویدیو و ویوپورت. وقتی این نسبت
-  از این عدد بیشتر شود (مثلاً ویدیوی افقیِ عریض روی گوشیِ عمودیِ
-  باریک)، پر کردن کادر با cover باعث برش شدید و حسِ «زوم‌شده» می‌شود؛
-  در آن حالت به‌جای cover از contain + یک لایه‌ی بلورِ پس‌زمینه
-  استفاده می‌کنیم تا کل فریم دیده شود، بدون برش تهاجمی.
-*/
-const ASPECT_MISMATCH_THRESHOLD = 1.5;
 
 // کوچک‌تر از یک فریم ویدیو (در ۳۰fps هر فریم ≈۰.۰۳۳ثانیه)؛ برای جلوگیری
 // از ست‌کردنِ بی‌فایده‌ی currentTime وقتی چیزی عملاً تغییر نکرده (کاربر ثابت مانده)
@@ -70,67 +38,25 @@ const SEEK_EPSILON = 0.008;
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef   = useRef<HTMLVideoElement>(null);
-  const blurRef    = useRef<HTMLVideoElement>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
 
   const [ready, setReady] = useState(false);
-
-  /*
-    رفع «تصویر زوم‌شده»: قبلاً روی دسکتاپ کادرِ ویدیو فقط ۴۰٪ عرض
-    صفحه بود (یک ستون باریک وسط‌چین) و cover همان ستون باریک را با
-    برش زیاد پر می‌کرد. الان فریم همیشه دقیقاً ۱۰۰٪ عرض/ارتفاعِ
-    کانتینر استیکی است. fitMode هم تعیین می‌کند که تمام‌صفحه با
-    cover پر شود (نسبت ابعاد ویوپورت به ویدیو نزدیک است) یا با
-    contain + بلور پس‌زمینه (نسبت ابعاد خیلی فرق دارد، مثل گوشی
-    عمودی با این ویدیوی افقی).
-  */
-  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const recomputeFitMode = () => {
-      if (!video.videoWidth || !video.videoHeight) return;
-      const videoAspect    = video.videoWidth / video.videoHeight;
-      const viewportAspect = window.innerWidth / window.innerHeight;
-      const mismatch =
-        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
-      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
-    };
-
-    const onLoadedMetadata = () => {
-      recomputeFitMode();
-      setReady(true);
-    };
-
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(recomputeFitMode, 150);
-    };
+    const onLoadedMetadata = () => setReady(true);
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
+    if (video.readyState >= 1) onLoadedMetadata();
 
-    if (video.readyState >= 1 && video.videoWidth > 0) {
-      onLoadedMetadata();
-    }
-
-    return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
+    return () => video.removeEventListener("loadedmetadata", onLoadedMetadata);
   }, []);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
     const video   = videoRef.current;
-    const blur    = blurRef.current;
     if (!wrapper || !video) return;
 
     let rafId: number | null = null;
@@ -175,9 +101,6 @@ export default function CinematicConstruction() {
       if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
         video.currentTime = displayedTime;
       }
-      if (blur && blur.readyState >= 2 && Math.abs(blur.currentTime - displayedTime) > SEEK_EPSILON) {
-        blur.currentTime = displayedTime;
-      }
     };
 
     rafId = requestAnimationFrame(tick);
@@ -200,33 +123,27 @@ export default function CinematicConstruction() {
         }}
       >
         {/*
-          لایه‌ی بلورِ پس‌زمینه: فقط وقتی fitMode برابر contain است
-          مونت می‌شود (نسبت ابعاد ویدیو و ویوپورت خیلی فرق دارند —
-          معمولاً گوشی عمودی با این ویدیوی افقی). خودِ همین ویدیو با
-          blur/تیرگی دور تا دورِ ویدیوی اصلیِ contain‌شده را پر
-          می‌کند تا نواری خالی/سیاه دیده نشود.
-        */}
-        {fitMode === "contain" && (
-          <video
-            ref={blurRef}
-            className="cinematic-blur-bg"
-            src={VIDEO_SRC}
-            poster={POSTER_SRC}
-            muted
-            playsInline
-            preload="auto"
-            aria-hidden="true"
-            tabIndex={-1}
-            style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover",
-              filter: "blur(30px) brightness(0.22) saturate(0.35)",
-              transform: "scale(1.1)",
-              zIndex: 0,
-            }}
-          />
-        )}
+          رفع باگِ نوارهای سیاه بالا/پایینِ ویدیو روی موبایل:
+          نسخه‌ی قبلی وقتی نسبت‌ابعادِ ویدیوی افقی با گوشیِ عمودی خیلی
+          فرق می‌کرد، به‌جای cover از contain + یک لایه‌ی ویدیوی دومِ
+          بلورشده (به‌عنوان پرکننده‌ی پس‌زمینه) استفاده می‌کرد. روی
+          آیفونِ واقعی، آن لایه‌ی دوم به‌جای بلورِ ویدیو، کاملاً سیاه
+          رندر می‌شد — یک باگ شناخته‌شده در iOS Safari جایی که
+          filter:blur() روی <video> با پایپ‌لاینِ کامپوزیت هاردویِ
+          ویدیو تداخل پیدا می‌کند و به‌جای فریمِ بلورشده، سیاه نشان
+          می‌دهد. همین، آن فضاهای خالی/سیاهِ بزرگ بالا و پایینِ ویدیو
+          را ایجاد می‌کرد.
 
+          راه‌حل: کل آن لایه‌ی دوم حذف شد. الان روی همه‌ی صفحه‌ها
+          (موبایل و دسکتاپ) از یک cover ساده و تمام‌صفحه استفاده
+          می‌شود — دقیقاً همان خواسته‌ی اصلی («تمام صفحه»)، بدون
+          پیچیدگیِ یک لایه‌ی ویدیوی دومِ ناپایدار. تاوانش این است که
+          روی گوشیِ خیلی باریک/عمودی، فقط بخش مرکزیِ فریم دیده می‌شود
+          (چون ویدیو افقی است)، ولی چون فیلم عمداً با فوکوس روی
+          مسیر/فضای مرکزی فیلم‌برداری شده، این کراپ در عمل قابل‌قبول
+          به‌نظر می‌رسد — و مطمئناً بهتر از نوار سیاهِ خراب‌شده‌ی قبلی
+          است.
+        */}
         <div
           className="cinematic-video-frame"
           style={{
@@ -249,7 +166,7 @@ export default function CinematicConstruction() {
               width: "100%",
               height: "100%",
               display: "block",
-              objectFit: fitMode,
+              objectFit: "cover",
               objectPosition: "center",
             }}
           >
@@ -266,12 +183,6 @@ export default function CinematicConstruction() {
           }
         `}</style>
 
-        {/*
-          فقط یک گرادیانِ خیلی ملایم بالا (برای خوانا ماندن نوار
-          ناوبریِ ثابتِ سایت روی ویدیو) و یک محوشدگیِ سبک پایین (برای
-          گذر نرم به سکشن بعدی). هیچ متن/برچسب/دایره‌ای روی ویدیو
-          نمایش داده نمی‌شود.
-        */}
         <div
           style={{
             position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
