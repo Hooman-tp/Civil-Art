@@ -6,9 +6,10 @@ const VIDEO_SRC = "/videos/construction.mp4";
 
 /*
   فریم اول ویدیو، از قبل استخراج و به‌صورت عکس ذخیره شده.
-  تا وقتی مرورگر داده‌ی واقعی ویدیو را دانلود می‌کند (که روی موبایل و
-  شبکه‌ی کند ممکن است چند ثانیه طول بکشد)، این عکس بلافاصله نمایش داده
-  می‌شود و به‌جای صفحه‌ی سیاه، کاربر همان لحظه یک فریم واقعی می‌بیند.
+  تا وقتی مرورگر داده‌ی واقعی ویدیو را دانلود می‌کند، این عکس بلافاصله
+  نمایش داده می‌شود و به‌جای صفحه‌ی سیاه، کاربر همان لحظه یک فریم واقعی
+  می‌بیند. همین عکس، بلورشده، به‌عنوان پرکننده‌ی پس‌زمینه در حالت
+  contain هم استفاده می‌شود (توضیح کامل پایین‌تر).
 
   ساخت این فایل با ffmpeg:
     ffmpeg -i construction.mp4 -ss 00:00:00.000 -vframes 1 -q:v 2 construction-poster.jpg
@@ -17,23 +18,46 @@ const VIDEO_SRC = "/videos/construction.mp4";
 const POSTER_SRC = "/videos/construction-poster.jpg";
 
 /*
-  ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش). عدد بزرگ‌تر
-  یعنی برای رسیدن به انتهای ویدیو باید بیشتر اسکرول کرد؛ عدد
-  کوچیک‌تر یعنی هر پیکسل اسکرول به بازه‌ی زمانیِ بزرگ‌تری از ویدیو
-  نگاشت می‌شود.
+  ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
 */
 const SCROLL_TRACK_VH = 500;
 
 /*
   ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه). عدد کوچیک‌تر = واکنش
   سریع‌تر/نزدیک‌تر به اسکرول خام؛ عدد بزرگ‌تر = نرم‌تر ولی با کمی
-  تأخیرِ محسوس‌تر.
+  تأخیرِ محسوس‌تر. عمداً بدون سقفِ سختِ سرعت (rate cap) — چرا، در
+  کامنتِ کنار تابعِ tick توضیح داده شده.
 */
 const TIME_SMOOTHING_TAU = 0.26;
 
-// کوچک‌تر از یک فریم ویدیو (در ۳۰fps هر فریم ≈۰.۰۳۳ثانیه)؛ برای جلوگیری
-// از ست‌کردنِ بی‌فایده‌ی currentTime وقتی چیزی عملاً تغییر نکرده (کاربر ثابت مانده)
+// کوچک‌تر از یک فریم ویدیو؛ برای جلوگیری از ست‌کردنِ بی‌فایده‌ی
+// currentTime وقتی چیزی عملاً تغییر نکرده (کاربر ثابت مانده)
 const SEEK_EPSILON = 0.008;
+
+/*
+  آستانه‌ی «عدم تطابق نسبت ابعاد» بین ویدیو (افقی، ۱۶:۹) و ویوپورت.
+  رفعِ باگِ «فیلم رو گوشی زوم شده»: نسخه‌ی قبلی روی همه‌جا از cover
+  استفاده می‌کرد تا مشکلِ نوارهای سیاهِ نسخه‌ی قبل‌تر از آن حل شود؛
+  اما روی گوشیِ عمودیِ باریک، cover یک ویدیوی افقیِ عریض را تا حدی
+  می‌بُرد که فقط برشِ مرکزیِ ~۲۶٪ عرضِ فریم دیده می‌شد — دقیقاً همان
+  چیزی که «زوم‌شده» به‌نظر می‌رسید.
+
+  الان دوباره تشخیصِ نسبت‌ابعاد برگشته: وقتی این نسبت از این عدد
+  بیشتر شود (گوشیِ عمودی با این ویدیوی افقی)، به‌جای cover از contain
+  استفاده می‌شود (کل فریم دیده می‌شود، بدون برشِ تهاجمی) و پشتش یک
+  پرکننده‌ی بلورشده قرار می‌گیرد تا فضای خالیِ اطراف، سیاهِ خشک نباشد.
+
+  تفاوتِ کلیدی با تلاشِ قبلی: آن پرکننده قبلاً یک <video> دومِ
+  بلورشده (با filter:blur) بود که روی آیفونِ واقعی به‌جای بلورِ ویدیو،
+  کاملاً سیاه رندر می‌شد (یک باگِ شناخته‌شده‌ی iOS Safari در ترکیبِ
+  filter با <video>). الان پرکننده یک <img> بلورشده از همان
+  POSTER_SRC است — یک عکسِ ساکن، نه ویدیو — که filter:blur() رویش
+  در همه‌ی مرورگرها (از جمله iOS Safari) قابل‌اعتماد و بدون این باگ
+  رندر می‌شود. چون این لایه فقط تزئینی/محو است (نه چیزی که باید
+  هم‌زمان با اسکرول پخش شود)، یک فریمِ ثابتِ بلورشده از نظر بصری کاملاً
+  کافی است.
+*/
+const ASPECT_MISMATCH_THRESHOLD = 1.5;
 
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -41,17 +65,47 @@ export default function CinematicConstruction() {
   const progressFillRef = useRef<HTMLDivElement>(null);
 
   const [ready, setReady] = useState(false);
+  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const onLoadedMetadata = () => setReady(true);
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const recomputeFitMode = () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const videoAspect    = video.videoWidth / video.videoHeight;
+      const viewportAspect = window.innerWidth / window.innerHeight;
+      const mismatch =
+        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
+      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
+    };
+
+    const onLoadedMetadata = () => {
+      recomputeFitMode();
+      setReady(true);
+    };
+
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(recomputeFitMode, 150);
+    };
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
-    if (video.readyState >= 1) onLoadedMetadata();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
 
-    return () => video.removeEventListener("loadedmetadata", onLoadedMetadata);
+    if (video.readyState >= 1 && video.videoWidth > 0) {
+      onLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -72,6 +126,14 @@ export default function CinematicConstruction() {
       return Math.max(0, Math.min(1, scrolled / total));
     };
 
+    /*
+      چرا بدون سقفِ سختِ سرعت: یک نسخه‌ی قبلی، سرعتِ پخش را به یک
+      عددِ ثابت (مثلاً حداکثر ۱.۱۵ برابر سرعتِ واقعی) محدود می‌کرد.
+      چون این ویدیو ~۶۴ ثانیه‌ست، آن سقف باعث می‌شد دیدنِ کاملش حداقل
+      ~۵۵ ثانیه اسکرولِ پیوسته لازم داشته باشد (صرف‌نظر از سرعتِ دستِ
+      کاربر) و برعکس‌کردنِ ناگهانیِ جهتِ اسکرول را هم دیر/کند می‌کرد.
+      فرمولِ فعلی (خالص exponential smoothing) این مشکل را ندارد.
+    */
     const tick = (ts: number) => {
       rafId = requestAnimationFrame(tick);
 
@@ -90,7 +152,6 @@ export default function CinematicConstruction() {
       const targetTime = p * video.duration;
 
       if (!hasSyncedInitial) {
-        // اولین باری که ویدیو آماده می‌شود، بدون میرایی مستقیم به فریم درست بپر
         displayedTime = targetTime;
         hasSyncedInitial = true;
       } else {
@@ -122,28 +183,22 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
-        {/*
-          رفع باگِ نوارهای سیاه بالا/پایینِ ویدیو روی موبایل:
-          نسخه‌ی قبلی وقتی نسبت‌ابعادِ ویدیوی افقی با گوشیِ عمودی خیلی
-          فرق می‌کرد، به‌جای cover از contain + یک لایه‌ی ویدیوی دومِ
-          بلورشده (به‌عنوان پرکننده‌ی پس‌زمینه) استفاده می‌کرد. روی
-          آیفونِ واقعی، آن لایه‌ی دوم به‌جای بلورِ ویدیو، کاملاً سیاه
-          رندر می‌شد — یک باگ شناخته‌شده در iOS Safari جایی که
-          filter:blur() روی <video> با پایپ‌لاینِ کامپوزیت هاردویِ
-          ویدیو تداخل پیدا می‌کند و به‌جای فریمِ بلورشده، سیاه نشان
-          می‌دهد. همین، آن فضاهای خالی/سیاهِ بزرگ بالا و پایینِ ویدیو
-          را ایجاد می‌کرد.
+        {fitMode === "contain" && (
+          // پرکننده‌ی بلورشده‌ی پس‌زمینه — یک <img> ساکن، نه ویدیو (توضیح در کامنت بالای ASPECT_MISMATCH_THRESHOLD)
+          <img
+            src={POSTER_SRC}
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%",
+              objectFit: "cover",
+              filter: "blur(35px) brightness(0.35) saturate(0.4)",
+              transform: "scale(1.15)",
+              zIndex: 0,
+            }}
+          />
+        )}
 
-          راه‌حل: کل آن لایه‌ی دوم حذف شد. الان روی همه‌ی صفحه‌ها
-          (موبایل و دسکتاپ) از یک cover ساده و تمام‌صفحه استفاده
-          می‌شود — دقیقاً همان خواسته‌ی اصلی («تمام صفحه»)، بدون
-          پیچیدگیِ یک لایه‌ی ویدیوی دومِ ناپایدار. تاوانش این است که
-          روی گوشیِ خیلی باریک/عمودی، فقط بخش مرکزیِ فریم دیده می‌شود
-          (چون ویدیو افقی است)، ولی چون فیلم عمداً با فوکوس روی
-          مسیر/فضای مرکزی فیلم‌برداری شده، این کراپ در عمل قابل‌قبول
-          به‌نظر می‌رسد — و مطمئناً بهتر از نوار سیاهِ خراب‌شده‌ی قبلی
-          است.
-        */}
         <div
           className="cinematic-video-frame"
           style={{
@@ -166,7 +221,7 @@ export default function CinematicConstruction() {
               width: "100%",
               height: "100%",
               display: "block",
-              objectFit: "cover",
+              objectFit: fitMode,
               objectPosition: "center",
             }}
           >
