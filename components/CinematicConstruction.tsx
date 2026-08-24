@@ -85,6 +85,25 @@ export default function CinematicConstruction() {
     const onLoadedMetadata = () => {
       recomputeFitMode();
       setReady(true);
+
+      /*
+        رفع «رو رفرش، فیلم ثابته؛ باید برم یه صفحه‌ی دیگه و برگردم»:
+        SmoothScroll (و Lenis داخلش) توی app/layout.tsx و فقط یک‌بار
+        در کل عمر برنامه ساخته می‌شود؛ روی navigation بین صفحات دوباره
+        ساخته نمی‌شود، فقط روی reload کامل. طبق کامنتِ خودِ
+        hooks/useLenis.ts، نمونه‌ی Lenis روی window.__lenis در دسترسه.
+
+        نظریه: روی یک ری‌لود کامل (بر خلاف SPA navigation که JS از قبل
+        گرم است)، effect این کامپوننت ممکنه زودتر از اینکه Lenis کاملاً
+        ارتفاعِ صفحه رو (که با اضافه‌شدنِ این بخشِ ۵۰۰vh‌ای عوض می‌شه)
+        اندازه‌گیری کنه اجرا بشه. یک lenis.resize() صریح، درست بعد از
+        اینکه ارتفاعِ نهاییِ این بخش مشخص شد (همینجا، بعد از
+        loadedmetadata)، این عدم‌هماهنگی رو رفع می‌کنه، بدون اینکه به
+        useLenis.ts دست بزنیم.
+      */
+      requestAnimationFrame(() => {
+        (window as unknown as { __lenis?: { resize?: () => void } }).__lenis?.resize?.();
+      });
     };
 
     const onResize = () => {
