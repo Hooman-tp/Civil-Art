@@ -11,6 +11,7 @@ import ProjectCard from "../components/ProjectCard";
 import { getFeaturedProjects } from "../lib/projectsData";
 import { getProjectCover } from "../lib/getProjectImages";
 import { BLUEPRINT_GRID } from "../lib/backgroundPatterns";
+import CinematicStatsSection from "../components/cinematic/CinematicStatsSection";
 
 export default function Home() {
   const featuredProjects = getFeaturedProjects(6);
@@ -21,31 +22,15 @@ export default function Home() {
       <Hero />
       <QuickAccessCTA />
 
-      {/* ── آمار سریع (مشکی + بافت نقشه‌کشی) ── */}
-      <section
-        style={{
-          background: "#0b0b0d",
-          backgroundImage: BLUEPRINT_GRID,
-          backgroundRepeat: "repeat",
-          borderBottom: "1px solid rgba(212,175,55,0.12)",
-          padding: "70px 24px",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "1100px",
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-            gap: "20px",
-          }}
-        >
-          <StatCard icon={<IconBuilding />} value="+۱۲۰" label="پروژه تکمیل شده" />
-          <StatCard icon={<IconMedal />} value="+۱۸" label="سال تجربه" />
-          <StatCard icon={<IconTeam />} value="+۶۰" label="نیروی متخصص" />
-          <StatCard icon={<IconHandshake />} value="+۴۰" label="کارفرمای دائمی" />
-        </div>
-      </section>
+      {/* ── آمار سریع (حالا با پس‌زمینه‌ی سه‌بعدیِ سینمایی؛ محتوا/اعداد دقیقاً همان قبلی) ── */}
+      <CinematicStatsSection
+        stats={[
+          { icon: <IconBuilding />, value: "+۱۲۰", label: "پروژه تکمیل شده" },
+          { icon: <IconMedal />, value: "+۱۸", label: "سال تجربه" },
+          { icon: <IconTeam />, value: "+۶۰", label: "نیروی متخصص" },
+          { icon: <IconHandshake />, value: "+۴۰", label: "کارفرمای دائمی" },
+        ]}
+      />
 
       {/* ── معرفی کوتاه (سفید) ── */}
       <section
@@ -231,27 +216,6 @@ export default function Home() {
 }
 
 /* ── بلوک‌های ساختاری ── */
-
-function StatCard({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
-  return (
-    <div
-      className="stat-card"
-      style={{
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(212,175,55,0.15)",
-        borderRadius: "16px",
-        padding: "28px 20px",
-        textAlign: "center",
-      }}
-    >
-      <div style={{ color: "#D4AF37", marginBottom: "12px", display: "flex", justifyContent: "center" }}>
-        {icon}
-      </div>
-      <div style={{ color: "#fff", fontSize: "clamp(26px,3.6vw,38px)", fontWeight: 900 }}>{value}</div>
-      <div style={{ color: "rgba(255,255,255,0.5)", marginTop: "6px", fontSize: "13px" }}>{label}</div>
-    </div>
-  );
-}
 
 function Eyebrow({ text }: { text: string }) {
   return (
