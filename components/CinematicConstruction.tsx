@@ -148,9 +148,8 @@ export default function CinematicConstruction() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.src = VIDEO_SRC;
-    video.load();
-
+    // src/preload روی خود <video> تعریف شده؛ اینجا فقط decoder را
+    // برای Safari آماده می‌کنیم.
     const unlockPromise = video.play();
     if (unlockPromise && typeof unlockPromise.then === "function") {
       unlockPromise
@@ -237,6 +236,40 @@ export default function CinematicConstruction() {
     let lastTs: number | null = null;
     let displayedTime = 0;
     let hasSyncedInitial = false;
+    let lastProgress = -1;
+    let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+    let playRequestInFlight = false;
+
+    /*
+      iOS Safari/WebKit روی بعضی ویدیوها وقتی video کاملاً paused است،
+      تغییر سریع currentTime را انجام می‌دهد اما همیشه فریم جدید را فوراً
+      روی صفحه repaint نمی‌کند. هنگام حرکت اسکرول، ویدیو را موقتاً در حالت
+      play نگه می‌داریم و currentTime را با اسکرول سینک می‌کنیم؛ بلافاصله
+      بعد از توقف اسکرول دوباره pause می‌شود.
+    */
+    const keepVideoRendering = () => {
+      if (!video.paused || playRequestInFlight) return;
+      playRequestInFlight = true;
+      const promise = video.play();
+      if (promise && typeof promise.then === "function") {
+        promise
+          .catch(() => {
+            // اگر مرورگر play را رد کرد، seek استاندارد همچنان ادامه دارد.
+          })
+          .finally(() => {
+            playRequestInFlight = false;
+          });
+      } else {
+        playRequestInFlight = false;
+      }
+    };
+
+    const schedulePause = () => {
+      if (pauseTimer) clearTimeout(pauseTimer);
+      pauseTimer = setTimeout(() => {
+        video.pause();
+      }, 140);
+    };
 
     const getTargetProgress = () => {
       const rect  = wrapper.getBoundingClientRect();
@@ -274,9 +307,18 @@ export default function CinematicConstruction() {
         introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
       }
 
-      if (!(video.readyState >= 2 && video.duration)) return;
+      if (!(video.readyState >= 2 && Number.isFinite(video.duration) && video.duration > 0)) {
+        return;
+      }
 
       const targetTime = p * video.duration;
+      const progressMoved = Math.abs(p - lastProgress) > 0.00001;
+
+      if (progressMoved) {
+        lastProgress = p;
+        keepVideoRendering();
+        schedulePause();
+      }
 
       if (!hasSyncedInitial) {
         displayedTime = targetTime;
@@ -287,7 +329,11 @@ export default function CinematicConstruction() {
       }
 
       if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
-        video.currentTime = displayedTime;
+        if (typeof video.fastSeek === "function") {
+          video.fastSeek(displayedTime);
+        } else {
+          video.currentTime = displayedTime;
+        }
       }
 
       // برچسبِ مکان: کدام بخش از خانه، بر اساس ثانیه‌ی واقعیِ نمایش‌داده‌شده
@@ -309,6 +355,8 @@ export default function CinematicConstruction() {
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      if (pauseTimer) clearTimeout(pauseTimer);
+      video.pause();
     };
   }, []);
 
@@ -353,6 +401,7 @@ export default function CinematicConstruction() {
         >
           <video
             ref={videoRef}
+            src={VIDEO_SRC}
             muted
             autoPlay
             playsInline
