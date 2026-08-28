@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 
 const VIDEO_SRC = "/videos/construction.mp4";
-const MOBILE_VIDEO_SRC = "/videos/construction-mobile-hevc.mp4";
 
 /*
   فریم اول ویدیو، از قبل استخراج و به‌صورت عکس ذخیره شده.
@@ -149,160 +148,117 @@ export default function CinematicConstruction() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    let cancelled = false;
-    let warmupTimer: ReturnType<typeof setTimeout> | null = null;
-
-    // روی موبایل ابتدا HEVC کم‌حجم‌تر را امتحان می‌کنیم؛ اگر دستگاه/مرورگر
-    // HEVC را پشتیبانی نکند، خودکار به H.264 اصلی برمی‌گردیم.
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
-    const hevcSupported =
-      typeof video.canPlayType === "function" &&
-      video.canPlayType('video/mp4; codecs="hvc1"') !== "";
-
-    const src = mobile && hevcSupported ? MOBILE_VIDEO_SRC : VIDEO_SRC;
-    video.src = src;
+    video.src = VIDEO_SRC;
     video.load();
 
-    const startWarmup = () => {
-      if (cancelled) return;
-      const promise = video.play();
-      if (promise && typeof promise.catch === "function") {
-        promise.catch(() => {});
-      }
-
-      // فقط برای گرم‌کردن decoder/render pipeline. صفحه‌ی Intro روی آن است،
-      // بنابراین کاربر حرکت خطی ویدیو را نمی‌بیند.
-      warmupTimer = setTimeout(() => {
-        if (!cancelled) {
-          video.pause();
-          video.currentTime = 0;
-        }
-      }, 900);
-    };
-
-    if (video.readyState >= 2) {
-      startWarmup();
-    } else {
-      video.addEventListener("canplay", startWarmup, { once: true });
-      video.addEventListener("loadeddata", startWarmup, { once: true });
+    const unlockPromise = video.play();
+    if (unlockPromise && typeof unlockPromise.then === "function") {
+      unlockPromise
+        .then(() => video.pause())
+        .catch(() => {
+          // اگه مرورگر حتی muted-autoplay رو هم اجازه نده، مشکلی نیست؛
+          // فقط یعنی این unlock جواب نداده، بدون کرش‌کردنِ برنامه
+        });
     }
+  }, []);
 
-    return () => {
-      cancelled = true;
-      if (warmupTimer) clearTimeout(warmupTimer);
-      video.pause();
-    };
+  /*
+    اقدام احتیاطی (defensive): اگه به هر دلیلی — شبکه، مرورگر خاص،
+    شرایطی که من نتونستم توی محیط تستم شبیه‌سازی کنم — بارگذاریِ
+    ویدیو گیر کرد و هیچ‌وقت حتی یک بایت هم نگرفت (NETWORK_NO_SOURCE)،
+    یک تلاشِ دوباره‌ی خودکار انجام می‌شه. اگه ویدیو عادی لود بشه، این
+    شرط هیچ‌وقت true نمی‌شه و کاملاً بی‌اثره — هیچ ضرری نداره.
+  */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const NETWORK_NO_SOURCE = 3;
+    const timer = setTimeout(() => {
+      if (video.readyState === 0 && video.networkState === NETWORK_NO_SOURCE) {
+        video.load();
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   useEffect(() => {
-    const wrapper = wrapperRef.current;
     const video = videoRef.current;
+    if (!video) return;
+
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const recomputeFitMode = () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const videoAspect    = video.videoWidth / video.videoHeight;
+      const viewportAspect = window.innerWidth / window.innerHeight;
+      const mismatch =
+        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
+      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
+    };
+
+    const onLoadedMetadata = () => {
+      recomputeFitMode();
+      requestAnimationFrame(() => {
+        (window as unknown as { __lenis?: { resize?: () => void } }).__lenis?.resize?.();
+      });
+    };
+
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(recomputeFitMode, 150);
+    };
+
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+
+    if (video.readyState >= 1 && video.videoWidth > 0) {
+      onLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const video   = videoRef.current;
     if (!wrapper || !video) return;
 
     let rafId: number | null = null;
-    let lastTs = 0;
+    let lastTs: number | null = null;
     let displayedTime = 0;
-    let targetTime = 0;
-    let initialized = false;
-    let lastProgress = -1;
-    let lastSeekTarget = -1;
-    let seeking = false;
-    let pendingTarget = -1;
-    let renderPlayInFlight = false;
-    let momentumTimer: ReturnType<typeof setTimeout> | null = null;
-    let lastTargetTime = 0;
-    let direction = 0;
-
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    // روی موبایل 30fps کافی است؛ اما seek فقط زمانی ارسال می‌شود که seek
-    // قبلی تمام شده باشد تا Safari صف بزرگی از seekها نسازد.
-    const SEEK_EPSILON = isMobile ? 0.012 : 0.008;
-    const SMOOTHING_TAU = isMobile ? 0.045 : 0.055;
-    const MOMENTUM_MS = isMobile ? 230 : 170;
-    const ACTIVE_PLAYBACK_RATE = 0.001;
+    let hasSyncedInitial = false;
 
     const getTargetProgress = () => {
-      const rect = wrapper.getBoundingClientRect();
+      const rect  = wrapper.getBoundingClientRect();
       const total = wrapper.offsetHeight - window.innerHeight;
       if (total <= 0) return 0;
-      return Math.max(0, Math.min(1, -rect.top / total));
+      const scrolled = -rect.top;
+      return Math.max(0, Math.min(1, scrolled / total));
     };
 
-    const keepRendererAlive = () => {
-      if (!video.paused || renderPlayInFlight) {
-        if (!video.paused) video.playbackRate = ACTIVE_PLAYBACK_RATE;
-        return;
-      }
-
-      renderPlayInFlight = true;
-      video.playbackRate = ACTIVE_PLAYBACK_RATE;
-      const promise = video.play();
-
-      if (promise && typeof promise.finally === "function") {
-        promise.finally(() => {
-          renderPlayInFlight = false;
-        }).catch(() => {
-          renderPlayInFlight = false;
-        });
-      } else {
-        renderPlayInFlight = false;
-      }
-    };
-
-    const stopRendererAfterMomentum = () => {
-      if (momentumTimer) clearTimeout(momentumTimer);
-      momentumTimer = setTimeout(() => {
-        video.pause();
-        video.playbackRate = 1;
-      }, MOMENTUM_MS);
-    };
-
-    const issueSeek = (time: number) => {
-      const duration = video.duration;
-      if (!Number.isFinite(duration) || duration <= 0) return;
-
-      const clamped = Math.max(0, Math.min(duration - 0.001, time));
-
-      if (seeking) {
-        pendingTarget = clamped;
-        return;
-      }
-
-      if (
-        lastSeekTarget >= 0 &&
-        Math.abs(clamped - lastSeekTarget) < SEEK_EPSILON
-      ) {
-        return;
-      }
-
-      seeking = true;
-      pendingTarget = -1;
-      lastSeekTarget = clamped;
-      video.currentTime = clamped;
-    };
-
-    const onSeeked = () => {
-      seeking = false;
-
-      // فقط آخرین هدف را اعمال می‌کنیم؛ هدف‌های میانی دور ریخته می‌شوند.
-      if (pendingTarget >= 0) {
-        const next = pendingTarget;
-        pendingTarget = -1;
-        issueSeek(next);
-      }
-    };
-
-    video.addEventListener("seeked", onSeeked);
-
+    /*
+      چرا بدون سقفِ سختِ سرعت: یک نسخه‌ی قبلی، سرعتِ پخش را به یک
+      عددِ ثابت (مثلاً حداکثر ۱.۱۵ برابر سرعتِ واقعی) محدود می‌کرد.
+      چون این ویدیو ~۶۴ ثانیه‌ست، آن سقف باعث می‌شد دیدنِ کاملش حداقل
+      ~۵۵ ثانیه اسکرولِ پیوسته لازم داشته باشد (صرف‌نظر از سرعتِ دستِ
+      کاربر) و برعکس‌کردنِ ناگهانیِ جهتِ اسکرول را هم دیر/کند می‌کرد.
+      فرمولِ فعلی (خالص exponential smoothing) این مشکل را ندارد.
+    */
     const tick = (ts: number) => {
       rafId = requestAnimationFrame(tick);
 
-      if (!lastTs) lastTs = ts;
-      const dt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
+      if (lastTs === null) lastTs = ts;
+      const dt = (ts - lastTs) / 1000;
       lastTs = ts;
 
       const p = getTargetProgress();
@@ -311,77 +267,41 @@ export default function CinematicConstruction() {
         progressFillRef.current.style.width = `${p * 100}%`;
       }
 
+      // محو شدنِ صفحه‌ی مقدمه، فقط بر اساسِ پیشرفتِ خامِ اسکرول (نه آماده‌بودنِ ویدیو)
       if (introRef.current) {
         const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
         introRef.current.style.opacity = String(introOpacity);
-        introRef.current.style.pointerEvents =
-          introOpacity <= 0.02 ? "none" : "auto";
+        introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
       }
 
-      const duration = video.duration;
-      if (!Number.isFinite(duration) || duration <= 0 || video.readyState < 2) {
-        return;
-      }
+      if (!(video.readyState >= 2 && video.duration)) return;
 
-      targetTime = p * duration;
+      const targetTime = p * video.duration;
 
-      if (!initialized) {
+      if (!hasSyncedInitial) {
         displayedTime = targetTime;
-        lastTargetTime = targetTime;
-        initialized = true;
+        hasSyncedInitial = true;
       } else {
-        const delta = targetTime - lastTargetTime;
-        if (Math.abs(delta) > 0.0005) {
-          direction = delta > 0 ? 1 : -1;
-        }
-        lastTargetTime = targetTime;
-
-        // smoothing فقط روی اختلاف باقی‌مانده اعمال می‌شود؛ بنابراین
-        // انگشت از ویدیو جلو نمی‌افتد و reverse هم با پرش همراه نمی‌شود.
-        const alpha = 1 - Math.exp(-dt / SMOOTHING_TAU);
+        const alpha = 1 - Math.exp(-dt / TIME_SMOOTHING_TAU);
         displayedTime += (targetTime - displayedTime) * alpha;
-
-        // تغییر جهت: سریع‌تر به هدف جدید برگرد، بدون overshoot.
-        if (
-          direction !== 0 &&
-          (targetTime - displayedTime) * direction < 0
-        ) {
-          displayedTime = targetTime;
-        }
       }
 
-      const movement = Math.abs(targetTime - displayedTime);
-
-      if (Math.abs(p - lastProgress) > 0.000001) {
-        lastProgress = p;
-        keepRendererAlive();
-        stopRendererAfterMomentum();
+      if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
+        video.currentTime = displayedTime;
       }
 
-      // در حالت فعال، decoder در وضعیت playing بسیار آهسته می‌ماند تا Safari
-      // مسیر decode/render را رها نکند؛ اما currentTime همچنان فرمان اصلی است.
-      if (!video.paused) {
-        video.playbackRate = ACTIVE_PLAYBACK_RATE;
-      }
-
-      if (movement > SEEK_EPSILON) {
-        issueSeek(displayedTime);
-      }
-
+      // برچسبِ مکان: کدام بخش از خانه، بر اساس ثانیه‌ی واقعیِ نمایش‌داده‌شده
       let currentLabel = LOCATIONS[0].label;
       for (let i = LOCATIONS.length - 1; i >= 0; i--) {
-        if (displayedTime >= LOCATIONS[i].time) {
-          currentLabel = LOCATIONS[i].label;
-          break;
-        }
+        if (displayedTime >= LOCATIONS[i].time) { currentLabel = LOCATIONS[i].label; break; }
       }
-
-      if (
-        currentLabel !== lastLocationRef.current &&
-        locationLabelRef.current
-      ) {
+      if (currentLabel !== lastLocationRef.current && locationLabelRef.current && locationWrapRef.current) {
         lastLocationRef.current = currentLabel;
         locationLabelRef.current.textContent = currentLabel;
+        const wrap = locationWrapRef.current;
+        wrap.style.animation = "none";
+        void wrap.offsetWidth;
+        wrap.style.animation = "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
       }
     };
 
@@ -389,10 +309,6 @@ export default function CinematicConstruction() {
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      if (momentumTimer) clearTimeout(momentumTimer);
-      video.removeEventListener("seeked", onSeeked);
-      video.pause();
-      video.playbackRate = 1;
     };
   }, []);
 
@@ -438,8 +354,9 @@ export default function CinematicConstruction() {
           <video
             ref={videoRef}
             muted
+            autoPlay
             playsInline
-            preload="metadata"
+            preload="auto"
             // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
             fetchPriority="high"
             poster={POSTER_SRC}
@@ -456,10 +373,9 @@ export default function CinematicConstruction() {
 
         <style>{`
           @keyframes caSpin { to { transform:rotate(360deg); } }
-          
+          @keyframes caLocFade { from { opacity:0; transform:translateX(-26px) scale(0.94); } to { opacity:1; transform:translateX(0) scale(1); } }
           @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
           @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
-          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#fff0a8 0%,#f5d76e 24%,#d4af37 52%,#ffd95a 76%,#b8860b 100%); background-clip:text; -webkit-background-clip:text; color:transparent;  }
 
           /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
           @supports (height: 100dvh) {
@@ -474,7 +390,7 @@ export default function CinematicConstruction() {
             .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
-            .ca-location-tag { bottom: 2.25rem !important; right: 1.1rem !important; left: auto !important; text-align: right !important; }
+            .ca-location-tag { bottom: 2.25rem !important; left: 1.1rem !important; }
             .ca-location-tag span { font-size: 22px !important; }
           }
         `}</style>
@@ -494,22 +410,32 @@ export default function CinematicConstruction() {
         {/* برچسبِ مکانِ فعلی؛ محتوای متن مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود؛ انیمیشن روی wrapper اعمال می‌شود تا متن+خط زیرش با هم حرکت کنند */}
         <div
           className="ca-location-tag"
-          style={{ position: "absolute", bottom: "4rem", right: "3rem", zIndex: 10, textAlign: "right" }}
+          style={{ position: "absolute", bottom: "4rem", left: "3rem", zIndex: 10 }}
         >
           <div ref={locationWrapRef}>
             <span
               ref={locationLabelRef}
-              className="ca-location-text"
               style={{
+                display: "block",
+                color: "#fff",
                 fontSize: 34,
                 fontWeight: 900,
                 letterSpacing: 0.3,
-                lineHeight: 1.2,
+                textShadow: "0 2px 24px rgba(0,0,0,0.7)",
               }}
             >
               {LOCATIONS[0].label}
             </span>
-
+            <div
+              style={{
+                width: 64,
+                height: 3,
+                marginTop: 12,
+                borderRadius: 2,
+                background: "linear-gradient(to right,#D4AF37,#f5e08a)",
+                boxShadow: "0 0 14px rgba(212,175,55,0.6)",
+              }}
+            />
           </div>
         </div>
 
