@@ -7,10 +7,9 @@ export const metadata = {
 };
 
 const STATS = [
-  { value: "+120", label: "پروژه تکمیل شده" },
-  { value: "+18", label: "سال تجربه" },
+  { value: "+۲۷", label: "پروژه تکمیل شده" },
+  { value: "+۲۰", label: "سال تجربه" },
   { value: "+60", label: "نیروی متخصص" },
-  { value: "+40", label: "کارفرمای دائمی" },
 ];
 
 const VALUES = [
