@@ -145,21 +145,64 @@ export default function CinematicConstruction() {
     یک لینک یک user activation قویه که این محدودیت رو برای کلِ session
     باز می‌کنه؛ اسکرولِ صرف همیشه به همون اندازه قوی حساب نمی‌شه.
   */
+  // iOS/Safari is much more reliable when the video source is present in
+  // the initial DOM and the first decoded frame is loaded before we start
+  // driving currentTime from scroll.  The previous implementation assigned
+  // src + load() + play() immediately inside an effect; on a cold mobile load
+  // that could leave the media element visually stuck until a later navigation
+  // caused the cached video to initialize again.
+  const mediaReadyRef = useRef(false);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.src = VIDEO_SRC;
-    video.load();
 
-    const unlockPromise = video.play();
-    if (unlockPromise && typeof unlockPromise.then === "function") {
-      unlockPromise
-        .then(() => video.pause())
-        .catch(() => {
-          // اگه مرورگر حتی muted-autoplay رو هم اجازه نده، مشکلی نیست؛
-          // فقط یعنی این unlock جواب نداده، بدون کرش‌کردنِ برنامه
-        });
-    }
+    let cancelled = false;
+
+    const primeVideo = () => {
+      if (cancelled || video.readyState < 2 || !Number.isFinite(video.duration)) return;
+
+      // Safari/iOS can ignore an early currentTime seek until the first
+      // decoded frame exists. loadeddata guarantees that first frame.
+      if (video.currentTime !== 0) video.currentTime = 0;
+
+      const unlock = video.play();
+      if (unlock && typeof unlock.then === "function") {
+        unlock
+          .then(() => {
+            if (cancelled) return;
+            // Give Safari one paint while the media element is genuinely
+            // playing, then pause. Subsequent currentTime seeks are now
+            // reliably rendered even though the video is scroll-controlled.
+            requestAnimationFrame(() => {
+              if (cancelled) return;
+              video.pause();
+              video.currentTime = 0;
+              mediaReadyRef.current = true;
+            });
+          })
+          .catch(() => {
+            // Muted autoplay may still be blocked by a browser policy.
+            // The first decoded frame is nevertheless usable for seeking.
+            mediaReadyRef.current = true;
+          });
+      } else {
+        mediaReadyRef.current = true;
+      }
+    };
+
+    video.addEventListener("loadeddata", primeVideo);
+    video.addEventListener("canplay", primeVideo);
+
+    // In case the browser restored the media element from cache before the
+    // listeners were attached.
+    if (video.readyState >= 2) primeVideo();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadeddata", primeVideo);
+      video.removeEventListener("canplay", primeVideo);
+    };
   }, []);
 
   /*
@@ -274,7 +317,7 @@ export default function CinematicConstruction() {
         introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
       }
 
-      if (!(video.readyState >= 2 && video.duration)) return;
+      if (!mediaReadyRef.current || video.readyState < 2 || !Number.isFinite(video.duration) || video.duration <= 0) return;
 
       const targetTime = p * video.duration;
 
@@ -353,8 +396,8 @@ export default function CinematicConstruction() {
         >
           <video
             ref={videoRef}
+            src={VIDEO_SRC}
             muted
-            autoPlay
             playsInline
             preload="auto"
             // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
