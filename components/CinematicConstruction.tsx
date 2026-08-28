@@ -57,17 +57,17 @@ const ASPECT_MISMATCH_THRESHOLD = 1.5;
   بررسی دستیِ محتوای هر بخش)، نه حدسی — یعنی با تصویر واقعی ویدیو
   منطبق است.
 */
-const LOCATIONS: { time: number; label: string }[] = [
-  { time: 0,  label: "ورودی" },
-  { time: 5,  label: "آشپزخانه و ناهارخوری" },
-  { time: 11, label: "سینمای خانگی" },
-  { time: 15, label: "نشیمن" },
-  { time: 19, label: "محوطه و استخر" },
-  { time: 28, label: "نشیمن و راهرو" },
-  { time: 35, label: "پلکان" },
-  { time: 45, label: "اتاق خواب اصلی" },
-  { time: 49, label: "تراس اختصاصی" },
-  { time: 53, label: "حمام و رختکن" },
+const LOCATIONS: { time: number; label: string; eyebrow: string; description: string }[] = [
+  { time: 0,  label: "ورودی", eyebrow: "01 / ARRIVAL", description: "سنگ تیره، فلز مشکی و نورپردازی خطی؛ ورودی‌ای مینیمال با تأکید بر شکوه و امنیت." },
+  { time: 5,  label: "آشپزخانه و ناهارخوری", eyebrow: "02 / INTERIOR DESIGN", description: "صفحه جزیره با سنگ طبیعی، کابینت‌های مات و مبلمان چوبی با نورپردازی گرم." },
+  { time: 11, label: "سینمای خانگی", eyebrow: "03 / HOME CINEMA", description: "آکوستیک کنترل‌شده، متریال تیره و نور مخفی برای تجربه‌ای عمیق و سینمایی." },
+  { time: 15, label: "نشیمن", eyebrow: "04 / LIVING SPACE", description: "مبلمان معاصر، بافت‌های طبیعی و قاب‌های شیشه‌ای؛ فضایی آرام و روشن." },
+  { time: 19, label: "محوطه و استخر", eyebrow: "05 / LANDSCAPE", description: "ترکیب آب، سنگ و فضای سبز در امتداد معماری؛ منظری یکپارچه و آرام." },
+  { time: 28, label: "نشیمن و راهرو", eyebrow: "06 / TRANSITION", description: "خطوط معماری خالص، کف یکپارچه و نورپردازی ظریف در مسیر حرکت خانه." },
+  { time: 35, label: "پلکان", eyebrow: "07 / ARCHITECTURAL DETAIL", description: "فلز ظریف و نور خطی؛ پلکانی مینیمال که به عنصر شاخص معماری تبدیل شده است." },
+  { time: 45, label: "اتاق خواب اصلی", eyebrow: "08 / MASTER SUITE", description: "چوب طبیعی، پارچه‌های نرم و پالت آرام برای فضایی متعادل و خصوصی." },
+  { time: 49, label: "تراس اختصاصی", eyebrow: "09 / PRIVATE TERRACE", description: "چشم‌انداز باز، مبلمان فضای باز و مرزی محو میان فضای داخلی و طبیعت." },
+  { time: 53, label: "حمام و رختکن", eyebrow: "10 / PRIVATE SPA", description: "سنگ یکپارچه، شیشه و نور گرم؛ فضایی لوکس با حس آرامش یک اسپا." },
 ];
 
 // نسبتی از کل مسیرِ اسکرول (نه ثانیه‌ی ویدیو) که طی آن صفحه‌ی مقدمه محو می‌شود
@@ -123,6 +123,8 @@ export default function CinematicConstruction() {
   const progressFillRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const locationLabelRef = useRef<HTMLSpanElement>(null);
+  const locationEyebrowRef = useRef<HTMLDivElement>(null);
+  const locationDescriptionRef = useRef<HTMLParagraphElement>(null);
   const locationWrapRef = useRef<HTMLDivElement>(null);
   const lastLocationRef = useRef<string>(LOCATIONS[0].label);
 
@@ -297,11 +299,11 @@ export default function CinematicConstruction() {
       }
       if (currentLabel !== lastLocationRef.current && locationLabelRef.current && locationWrapRef.current) {
         lastLocationRef.current = currentLabel;
-        locationLabelRef.current.textContent = currentLabel;
-        const wrap = locationWrapRef.current;
-        wrap.style.animation = "none";
-        void wrap.offsetWidth;
-        wrap.style.animation = "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
+        const currentLocation = LOCATIONS.find((location) => location.label === currentLabel) ?? LOCATIONS[0];
+        locationLabelRef.current.textContent = currentLocation.label;
+        if (locationEyebrowRef.current) locationEyebrowRef.current.textContent = currentLocation.eyebrow;
+        if (locationDescriptionRef.current) locationDescriptionRef.current.textContent = currentLocation.description;
+        if (locationWrapRef.current) locationWrapRef.current.style.opacity = "1";
       }
     };
 
@@ -390,7 +392,7 @@ export default function CinematicConstruction() {
             .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
-            .ca-location-tag { bottom: 2.25rem !important; right: 1.1rem !important; left: auto !important; text-align: right !important; }
+            .ca-location-tag { bottom: 2.1rem !important; right: 1rem !important; left: auto !important; width: min(315px, calc(100vw - 2rem)) !important; text-align: right !important; } .ca-glass-card { padding: 14px 16px 15px !important; border-radius: 15px !important; }
             .ca-location-tag span { font-size: 22px !important; }
           }
         `}</style>
@@ -407,26 +409,79 @@ export default function CinematicConstruction() {
           <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        {/* برچسبِ مکانِ فعلی؛ محتوای متن مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود؛ انیمیشن روی wrapper اعمال می‌شود تا متن+خط زیرش با هم حرکت کنند */}
+        {/* کارت شیشه‌ای اطلاعات فضا؛ کوچک و ثابت تا روی اسکرول اثر نگذارد */}
         <div
           className="ca-location-tag"
-          style={{ position: "absolute", bottom: "4rem", right: "3rem", zIndex: 10, textAlign: "right" }}
+          style={{
+            position: "absolute",
+            right: "3rem",
+            bottom: "3.2rem",
+            width: "min(390px, 34vw)",
+            zIndex: 10,
+            textAlign: "right",
+          }}
         >
-          <div ref={locationWrapRef}>
+          <div
+            ref={locationWrapRef}
+            className="ca-glass-card"
+            dir="rtl"
+            style={{
+              padding: "18px 22px 20px",
+              border: "1px solid rgba(212,175,55,0.34)",
+              borderRadius: 18,
+              background: "linear-gradient(145deg, rgba(10,10,10,0.52), rgba(10,10,10,0.28))",
+              backdropFilter: "blur(18px) saturate(125%)",
+              WebkitBackdropFilter: "blur(18px) saturate(125%)",
+              boxShadow: "0 18px 55px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <div
+              ref={locationEyebrowRef}
+              style={{
+                color: "#D4AF37",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 2.2,
+                marginBottom: 7,
+                direction: "ltr",
+                textAlign: "right",
+              }}
+            >
+              {LOCATIONS[0].eyebrow}
+            </div>
+
             <span
               ref={locationLabelRef}
               style={{
                 display: "block",
                 color: "#fff",
-                fontSize: 34,
+                fontSize: "clamp(21px, 2.1vw, 30px)",
                 fontWeight: 900,
-                letterSpacing: 0.3,
-                textShadow: "0 2px 24px rgba(0,0,0,0.7)",
+                lineHeight: 1.35,
               }}
             >
               {LOCATIONS[0].label}
             </span>
 
+            <p
+              ref={locationDescriptionRef}
+              style={{
+                color: "rgba(255,255,255,0.74)",
+                fontSize: 11.5,
+                lineHeight: 2,
+                fontWeight: 400,
+                margin: "8px 0 0",
+              }}
+            >
+              {LOCATIONS[0].description}
+            </p>
+
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 7, marginTop: 13, direction: "rtl" }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#D4AF37", boxShadow: "0 0 9px rgba(212,175,55,0.55)" }} />
+              <span style={{ color: "rgba(212,175,55,0.82)", fontSize: 8.5, letterSpacing: 1.6 }}>
+                CIVIL-ART / ARCHITECTURE
+              </span>
+            </div>
           </div>
         </div>
 
