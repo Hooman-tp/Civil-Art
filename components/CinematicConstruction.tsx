@@ -145,64 +145,21 @@ export default function CinematicConstruction() {
     یک لینک یک user activation قویه که این محدودیت رو برای کلِ session
     باز می‌کنه؛ اسکرولِ صرف همیشه به همون اندازه قوی حساب نمی‌شه.
   */
-  // iOS/Safari is much more reliable when the video source is present in
-  // the initial DOM and the first decoded frame is loaded before we start
-  // driving currentTime from scroll.  The previous implementation assigned
-  // src + load() + play() immediately inside an effect; on a cold mobile load
-  // that could leave the media element visually stuck until a later navigation
-  // caused the cached video to initialize again.
-  const mediaReadyRef = useRef(false);
-
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.src = VIDEO_SRC;
+    video.load();
 
-    let cancelled = false;
-
-    const primeVideo = () => {
-      if (cancelled || video.readyState < 2 || !Number.isFinite(video.duration)) return;
-
-      // Safari/iOS can ignore an early currentTime seek until the first
-      // decoded frame exists. loadeddata guarantees that first frame.
-      if (video.currentTime !== 0) video.currentTime = 0;
-
-      const unlock = video.play();
-      if (unlock && typeof unlock.then === "function") {
-        unlock
-          .then(() => {
-            if (cancelled) return;
-            // Give Safari one paint while the media element is genuinely
-            // playing, then pause. Subsequent currentTime seeks are now
-            // reliably rendered even though the video is scroll-controlled.
-            requestAnimationFrame(() => {
-              if (cancelled) return;
-              video.pause();
-              video.currentTime = 0;
-              mediaReadyRef.current = true;
-            });
-          })
-          .catch(() => {
-            // Muted autoplay may still be blocked by a browser policy.
-            // The first decoded frame is nevertheless usable for seeking.
-            mediaReadyRef.current = true;
-          });
-      } else {
-        mediaReadyRef.current = true;
-      }
-    };
-
-    video.addEventListener("loadeddata", primeVideo);
-    video.addEventListener("canplay", primeVideo);
-
-    // In case the browser restored the media element from cache before the
-    // listeners were attached.
-    if (video.readyState >= 2) primeVideo();
-
-    return () => {
-      cancelled = true;
-      video.removeEventListener("loadeddata", primeVideo);
-      video.removeEventListener("canplay", primeVideo);
-    };
+    const unlockPromise = video.play();
+    if (unlockPromise && typeof unlockPromise.then === "function") {
+      unlockPromise
+        .then(() => video.pause())
+        .catch(() => {
+          // اگه مرورگر حتی muted-autoplay رو هم اجازه نده، مشکلی نیست؛
+          // فقط یعنی این unlock جواب نداده، بدون کرش‌کردنِ برنامه
+        });
+    }
   }, []);
 
   /*
@@ -273,85 +230,116 @@ export default function CinematicConstruction() {
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
-    const video   = videoRef.current;
+    const video = videoRef.current;
     if (!wrapper || !video) return;
 
     let rafId: number | null = null;
     let lastTs: number | null = null;
     let displayedTime = 0;
-    let hasSyncedInitial = false;
+    let hasVideoSync = false;
+    let lastProgress = -1;
+
+    const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 
     const getTargetProgress = () => {
-      const rect  = wrapper.getBoundingClientRect();
+      const rect = wrapper.getBoundingClientRect();
       const total = wrapper.offsetHeight - window.innerHeight;
       if (total <= 0) return 0;
-      const scrolled = -rect.top;
-      return Math.max(0, Math.min(1, scrolled / total));
+      return clamp01(-rect.top / total);
     };
 
-    /*
-      چرا بدون سقفِ سختِ سرعت: یک نسخه‌ی قبلی، سرعتِ پخش را به یک
-      عددِ ثابت (مثلاً حداکثر ۱.۱۵ برابر سرعتِ واقعی) محدود می‌کرد.
-      چون این ویدیو ~۶۴ ثانیه‌ست، آن سقف باعث می‌شد دیدنِ کاملش حداقل
-      ~۵۵ ثانیه اسکرولِ پیوسته لازم داشته باشد (صرف‌نظر از سرعتِ دستِ
-      کاربر) و برعکس‌کردنِ ناگهانیِ جهتِ اسکرول را هم دیر/کند می‌کرد.
-      فرمولِ فعلی (خالص exponential smoothing) این مشکل را ندارد.
-    */
-    const tick = (ts: number) => {
-      rafId = requestAnimationFrame(tick);
-
-      if (lastTs === null) lastTs = ts;
-      const dt = (ts - lastTs) / 1000;
-      lastTs = ts;
-
-      const p = getTargetProgress();
-
-      if (progressFillRef.current) {
-        progressFillRef.current.style.width = `${p * 100}%`;
-      }
-
-      // محو شدنِ صفحه‌ی مقدمه، فقط بر اساسِ پیشرفتِ خامِ اسکرول (نه آماده‌بودنِ ویدیو)
-      if (introRef.current) {
-        const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
-        introRef.current.style.opacity = String(introOpacity);
-        introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
-      }
-
-      if (!mediaReadyRef.current || video.readyState < 2 || !Number.isFinite(video.duration) || video.duration <= 0) return;
-
-      const targetTime = p * video.duration;
-
-      if (!hasSyncedInitial) {
-        displayedTime = targetTime;
-        hasSyncedInitial = true;
-      } else {
-        const alpha = 1 - Math.exp(-dt / TIME_SMOOTHING_TAU);
-        displayedTime += (targetTime - displayedTime) * alpha;
-      }
-
-      if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
-        video.currentTime = displayedTime;
-      }
-
-      // برچسبِ مکان: کدام بخش از خانه، بر اساس ثانیه‌ی واقعیِ نمایش‌داده‌شده
+    const updateLocation = (time: number) => {
       let currentLabel = LOCATIONS[0].label;
       for (let i = LOCATIONS.length - 1; i >= 0; i--) {
-        if (displayedTime >= LOCATIONS[i].time) { currentLabel = LOCATIONS[i].label; break; }
+        if (time >= LOCATIONS[i].time) {
+          currentLabel = LOCATIONS[i].label;
+          break;
+        }
       }
-      if (currentLabel !== lastLocationRef.current && locationLabelRef.current && locationWrapRef.current) {
+
+      if (
+        currentLabel !== lastLocationRef.current &&
+        locationLabelRef.current &&
+        locationWrapRef.current
+      ) {
         lastLocationRef.current = currentLabel;
         locationLabelRef.current.textContent = currentLabel;
         const wrap = locationWrapRef.current;
         wrap.style.animation = "none";
         void wrap.offsetWidth;
-        wrap.style.animation = "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
+        wrap.style.animation =
+          "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
       }
     };
 
+    const tick = (ts: number) => {
+      rafId = requestAnimationFrame(tick);
+
+      if (lastTs === null) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.1);
+      lastTs = ts;
+
+      const p = getTargetProgress();
+
+      // UI must NEVER depend on the video being ready.
+      // This was the regression that made both the video and the text freeze.
+      if (progressFillRef.current && Math.abs(p - lastProgress) > 0.0005) {
+        progressFillRef.current.style.width = `${p * 100}%`;
+      }
+
+      if (introRef.current) {
+        const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
+        introRef.current.style.opacity = String(introOpacity);
+        introRef.current.style.pointerEvents =
+          introOpacity <= 0.02 ? "none" : "auto";
+      }
+
+      lastProgress = p;
+
+      const duration = video.duration;
+      const videoReady =
+        video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        Number.isFinite(duration) &&
+        duration > 0;
+
+      const targetTime = videoReady ? p * duration : displayedTime;
+
+      if (videoReady) {
+        if (!hasVideoSync) {
+          // The video may become ready after the user has already scrolled.
+          // Jump directly to the CURRENT scroll position on first sync.
+          displayedTime = targetTime;
+          hasVideoSync = true;
+          video.currentTime = targetTime;
+        } else {
+          const alpha = 1 - Math.exp(-dt / TIME_SMOOTHING_TAU);
+          displayedTime += (targetTime - displayedTime) * alpha;
+
+          if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
+            video.currentTime = displayedTime;
+          }
+        }
+
+        updateLocation(displayedTime);
+      } else {
+        // Keep the text/labels synchronized even while the video is loading.
+        // When the video becomes ready, hasVideoSync=false makes it jump to
+        // the user's actual current scroll position instead of frame 0.
+        updateLocation(p * 60);
+      }
+    };
+
+    // Recalculate immediately and also after the browser has had a chance
+    // to finish layout/Lenis initialization on the first mobile load.
     rafId = requestAnimationFrame(tick);
+    const refreshTimer = window.setTimeout(() => {
+      const lenis = (window as unknown as { __lenis?: { resize?: () => void } }).__lenis;
+      lenis?.resize?.();
+    }, 250);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      window.clearTimeout(refreshTimer);
     };
   }, []);
 
@@ -396,12 +384,12 @@ export default function CinematicConstruction() {
         >
           <video
             ref={videoRef}
-            src={VIDEO_SRC}
             muted
             playsInline
             preload="auto"
             // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
             fetchPriority="high"
+            src={VIDEO_SRC}
             poster={POSTER_SRC}
             aria-hidden="true"
             style={{
