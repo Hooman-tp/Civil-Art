@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const VIDEO_SRC = "/videos/construction.mp4";
+const MOBILE_VIDEO_SRC = "/videos/construction-mobile-hevc.mp4";
 
 /*
   فریم اول ویدیو، از قبل استخراج و به‌صورت عکس ذخیره شده.
@@ -150,84 +151,51 @@ export default function CinematicConstruction() {
     if (!video) return;
 
     let cancelled = false;
-    let ready = false;
+    let warmupTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const finishWarmup = () => {
-      if (cancelled || ready || video.readyState < 2) return;
-      ready = true;
-      video.pause();
-      video.currentTime = 0;
+    // روی موبایل ابتدا HEVC کم‌حجم‌تر را امتحان می‌کنیم؛ اگر دستگاه/مرورگر
+    // HEVC را پشتیبانی نکند، خودکار به H.264 اصلی برمی‌گردیم.
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
+    const hevcSupported =
+      typeof video.canPlayType === "function" &&
+      video.canPlayType('video/mp4; codecs="hvc1"') !== "";
+
+    const src = mobile && hevcSupported ? MOBILE_VIDEO_SRC : VIDEO_SRC;
+    video.src = src;
+    video.load();
+
+    const startWarmup = () => {
+      if (cancelled) return;
+      const promise = video.play();
+      if (promise && typeof promise.catch === "function") {
+        promise.catch(() => {});
+      }
+
+      // فقط برای گرم‌کردن decoder/render pipeline. صفحه‌ی Intro روی آن است،
+      // بنابراین کاربر حرکت خطی ویدیو را نمی‌بیند.
+      warmupTimer = setTimeout(() => {
+        if (!cancelled) {
+          video.pause();
+          video.currentTime = 0;
+        }
+      }, 900);
     };
 
-    const onCanPlay = () => finishWarmup();
-    const onLoadedData = () => finishWarmup();
-
-    video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("loadeddata", onLoadedData);
-
-    // ویدئو از همان ابتدا src دارد. یک play بی‌صدا فقط برای گرم‌کردن decoder
-    // و بازکردن مسیر دانلود است؛ تا قبل از آماده‌شدن واقعی آن را متوقف نمی‌کنیم.
-    // این کار جلوی حالت «چندین ثانیه صبر کن تا اولین scrub کار کند» را می‌گیرد.
-    video.load();
-    const warmup = video.play();
-    if (warmup && typeof warmup.catch === "function") {
-      warmup.catch(() => {
-        // اگر autoplay توسط مرورگر رد شد، اسکرول بعداً دوباره play را امتحان می‌کند.
-      });
+    if (video.readyState >= 2) {
+      startWarmup();
+    } else {
+      video.addEventListener("canplay", startWarmup, { once: true });
+      video.addEventListener("loadeddata", startWarmup, { once: true });
     }
 
     return () => {
       cancelled = true;
-      video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("loadeddata", onLoadedData);
+      if (warmupTimer) clearTimeout(warmupTimer);
       video.pause();
     };
   }, []);
 
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const recomputeFitMode = () => {
-      if (!video.videoWidth || !video.videoHeight) return;
-      const videoAspect    = video.videoWidth / video.videoHeight;
-      const viewportAspect = window.innerWidth / window.innerHeight;
-      const mismatch =
-        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
-      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
-    };
-
-    const onLoadedMetadata = () => {
-      recomputeFitMode();
-      requestAnimationFrame(() => {
-        (window as unknown as { __lenis?: { resize?: () => void } }).__lenis?.resize?.();
-      });
-    };
-
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(recomputeFitMode, 150);
-    };
-
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-
-    if (video.readyState >= 1 && video.videoWidth > 0) {
-      onLoadedMetadata();
-    }
-
-    return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
-  }, []);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -240,21 +208,22 @@ export default function CinematicConstruction() {
     let targetTime = 0;
     let initialized = false;
     let lastProgress = -1;
-    let lastSeekAt = -Infinity;
     let lastSeekTarget = -1;
     let seeking = false;
     let pendingTarget = -1;
-    let playRequestInFlight = false;
-    let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+    let renderPlayInFlight = false;
+    let momentumTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastTargetTime = 0;
+    let direction = 0;
 
-    // iOS Safari با seek در هر requestAnimationFrame مشکل دارد: seekهای سریع
-    // روی هم انباشته می‌شوند و نتیجه «لگ» و حتی فریم ثابت است. اینجا target
-    // در 60fps محاسبه می‌شود، اما seek واقعی فقط با آخرین target و حداکثر
-    // 24 بار در ثانیه انجام می‌شود.
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const SEEK_INTERVAL_MS = isMobile ? 1000 / 24 : 1000 / 30;
-    const SEEK_EPSILON = isMobile ? 0.025 : 0.012;
-    const SMOOTHING_TAU = isMobile ? 0.075 : 0.06;
+
+    // روی موبایل 30fps کافی است؛ اما seek فقط زمانی ارسال می‌شود که seek
+    // قبلی تمام شده باشد تا Safari صف بزرگی از seekها نسازد.
+    const SEEK_EPSILON = isMobile ? 0.012 : 0.008;
+    const SMOOTHING_TAU = isMobile ? 0.045 : 0.055;
+    const MOMENTUM_MS = isMobile ? 230 : 170;
+    const ACTIVE_PLAYBACK_RATE = 0.001;
 
     const getTargetProgress = () => {
       const rect = wrapper.getBoundingClientRect();
@@ -263,56 +232,75 @@ export default function CinematicConstruction() {
       return Math.max(0, Math.min(1, -rect.top / total));
     };
 
-    const ensureRendering = () => {
-      if (!video.paused || playRequestInFlight) return;
-      playRequestInFlight = true;
-      const promise = video.play();
-      if (promise && typeof promise.finally === "function") {
-        promise.finally(() => { playRequestInFlight = false; }).catch(() => {
-          playRequestInFlight = false;
-        });
-      } else {
-        playRequestInFlight = false;
-      }
-    };
-
-    const pauseSoon = () => {
-      if (pauseTimer) clearTimeout(pauseTimer);
-      pauseTimer = setTimeout(() => {
-        video.pause();
-        video.playbackRate = 1;
-      }, 120);
-    };
-
-    const issueSeek = (time: number, now: number) => {
-      if (seeking) {
-        pendingTarget = time;
+    const keepRendererAlive = () => {
+      if (!video.paused || renderPlayInFlight) {
+        if (!video.paused) video.playbackRate = ACTIVE_PLAYBACK_RATE;
         return;
       }
-      if (now - lastSeekAt < SEEK_INTERVAL_MS) return;
-      if (Math.abs(time - lastSeekTarget) < SEEK_EPSILON) return;
 
+      renderPlayInFlight = true;
+      video.playbackRate = ACTIVE_PLAYBACK_RATE;
+      const promise = video.play();
+
+      if (promise && typeof promise.finally === "function") {
+        promise.finally(() => {
+          renderPlayInFlight = false;
+        }).catch(() => {
+          renderPlayInFlight = false;
+        });
+      } else {
+        renderPlayInFlight = false;
+      }
+    };
+
+    const stopRendererAfterMomentum = () => {
+      if (momentumTimer) clearTimeout(momentumTimer);
+      momentumTimer = setTimeout(() => {
+        video.pause();
+        video.playbackRate = 1;
+      }, MOMENTUM_MS);
+    };
+
+    const issueSeek = (time: number) => {
       const duration = video.duration;
       if (!Number.isFinite(duration) || duration <= 0) return;
 
       const clamped = Math.max(0, Math.min(duration - 0.001, time));
+
+      if (seeking) {
+        pendingTarget = clamped;
+        return;
+      }
+
+      if (
+        lastSeekTarget >= 0 &&
+        Math.abs(clamped - lastSeekTarget) < SEEK_EPSILON
+      ) {
+        return;
+      }
+
       seeking = true;
       pendingTarget = -1;
-      lastSeekAt = now;
       lastSeekTarget = clamped;
       video.currentTime = clamped;
     };
 
     const onSeeked = () => {
       seeking = false;
-      // عمداً اینجا seek بعدی را اجرا نمی‌کنیم؛ RAF آن را با آخرین target
-      // و با فاصله‌ی زمانی مناسب اجرا می‌کند تا صف seek ساخته نشود.
+
+      // فقط آخرین هدف را اعمال می‌کنیم؛ هدف‌های میانی دور ریخته می‌شوند.
+      if (pendingTarget >= 0) {
+        const next = pendingTarget;
+        pendingTarget = -1;
+        issueSeek(next);
+      }
     };
 
     video.addEventListener("seeked", onSeeked);
 
     const tick = (ts: number) => {
       rafId = requestAnimationFrame(tick);
+
       if (!lastTs) lastTs = ts;
       const dt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
       lastTs = ts;
@@ -326,35 +314,59 @@ export default function CinematicConstruction() {
       if (introRef.current) {
         const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
         introRef.current.style.opacity = String(introOpacity);
-        introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
+        introRef.current.style.pointerEvents =
+          introOpacity <= 0.02 ? "none" : "auto";
       }
 
-      if (!(video.readyState >= 2 && Number.isFinite(video.duration) && video.duration > 0)) {
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0 || video.readyState < 2) {
         return;
       }
 
-      targetTime = p * video.duration;
+      targetTime = p * duration;
 
       if (!initialized) {
         displayedTime = targetTime;
+        lastTargetTime = targetTime;
         initialized = true;
       } else {
+        const delta = targetTime - lastTargetTime;
+        if (Math.abs(delta) > 0.0005) {
+          direction = delta > 0 ? 1 : -1;
+        }
+        lastTargetTime = targetTime;
+
+        // smoothing فقط روی اختلاف باقی‌مانده اعمال می‌شود؛ بنابراین
+        // انگشت از ویدیو جلو نمی‌افتد و reverse هم با پرش همراه نمی‌شود.
         const alpha = 1 - Math.exp(-dt / SMOOTHING_TAU);
         displayedTime += (targetTime - displayedTime) * alpha;
+
+        // تغییر جهت: سریع‌تر به هدف جدید برگرد، بدون overshoot.
+        if (
+          direction !== 0 &&
+          (targetTime - displayedTime) * direction < 0
+        ) {
+          displayedTime = targetTime;
+        }
       }
+
+      const movement = Math.abs(targetTime - displayedTime);
 
       if (Math.abs(p - lastProgress) > 0.000001) {
         lastProgress = p;
-        ensureRendering();
-        pauseSoon();
+        keepRendererAlive();
+        stopRendererAfterMomentum();
       }
 
-      // هنگام تغییر ناگهانی جهت، نرم‌سازی را سریع‌تر می‌کنیم تا فیلم عقب نماند.
-      if ((targetTime - displayedTime) * (targetTime - lastSeekTarget) < 0) {
-        displayedTime += (targetTime - displayedTime) * 0.7;
+      // در حالت فعال، decoder در وضعیت playing بسیار آهسته می‌ماند تا Safari
+      // مسیر decode/render را رها نکند؛ اما currentTime همچنان فرمان اصلی است.
+      if (!video.paused) {
+        video.playbackRate = ACTIVE_PLAYBACK_RATE;
       }
 
-      issueSeek(displayedTime, ts);
+      if (movement > SEEK_EPSILON) {
+        issueSeek(displayedTime);
+      }
 
       let currentLabel = LOCATIONS[0].label;
       for (let i = LOCATIONS.length - 1; i >= 0; i--) {
@@ -363,7 +375,11 @@ export default function CinematicConstruction() {
           break;
         }
       }
-      if (currentLabel !== lastLocationRef.current && locationLabelRef.current) {
+
+      if (
+        currentLabel !== lastLocationRef.current &&
+        locationLabelRef.current
+      ) {
         lastLocationRef.current = currentLabel;
         locationLabelRef.current.textContent = currentLabel;
       }
@@ -373,9 +389,10 @@ export default function CinematicConstruction() {
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      if (pauseTimer) clearTimeout(pauseTimer);
+      if (momentumTimer) clearTimeout(momentumTimer);
       video.removeEventListener("seeked", onSeeked);
       video.pause();
+      video.playbackRate = 1;
     };
   }, []);
 
@@ -420,10 +437,9 @@ export default function CinematicConstruction() {
         >
           <video
             ref={videoRef}
-            src={VIDEO_SRC}
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
             fetchPriority="high"
             poster={POSTER_SRC}
