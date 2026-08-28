@@ -40,6 +40,7 @@ export default function ProjectsClient({ projects }: { projects: ProjectWithCove
               tag={p.tag || p.category}
               description={p.shortDesc}
               year={p.year}
+              specs={p.specs}
               onImageClick={imageIndex >= 0 ? () => setActiveIndex(imageIndex) : undefined}
             />
           );

@@ -8,9 +8,12 @@ type ProjectGalleryClientProps = {
   cover: string | null;
   gallery: string[];
   alt: string;
+  tag?: string;
+  year?: string;
+  specs?: { label: string; value: string }[];
 };
 
-export default function ProjectGalleryClient({ cover, gallery, alt }: ProjectGalleryClientProps) {
+export default function ProjectGalleryClient({ cover, gallery, alt, tag, year, specs = [] }: ProjectGalleryClientProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const allImages: LightboxImage[] = [
@@ -49,6 +52,27 @@ export default function ProjectGalleryClient({ cover, gallery, alt }: ProjectGal
               sizes="(max-width: 1100px) 100vw, 1100px"
               imageClassName="gallery-thumb-image"
             />
+            <div
+              style={{
+                position: "absolute",
+                right: 18,
+                bottom: 18,
+                maxWidth: "min(420px, 70%)",
+                padding: "12px 15px",
+                borderRadius: 14,
+                background: "rgba(8,8,10,0.52)",
+                border: "1px solid rgba(212,175,55,0.22)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                textAlign: "right",
+                pointerEvents: "none",
+              }}
+            >
+              <div style={{ color: "#D4AF37", fontSize: 9, letterSpacing: 1.6 }}>{tag || "CIVIL-ART"}</div>
+              <div style={{ color: "#fff", fontSize: 14, fontWeight: 800, marginTop: 4 }}>{alt}</div>
+              {year && <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 10, marginTop: 3 }}>سال اجرا: {year}</div>}
+              {specs.length > 0 && <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 9, marginTop: 5 }}>{specs.slice(0, 3).map(s => `${s.label}: ${s.value}`).join("  ·  ")}</div>}
+            </div>
           </button>
         </section>
       )}
@@ -91,6 +115,27 @@ export default function ProjectGalleryClient({ cover, gallery, alt }: ProjectGal
                   sizes="(max-width: 768px) 50vw, 220px"
                   imageClassName="gallery-thumb-image"
                 />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    padding: "7px 9px",
+                    borderRadius: 10,
+                    background: "rgba(8,8,10,0.48)",
+                    border: "1px solid rgba(212,175,55,0.16)",
+                    backdropFilter: "blur(9px)",
+                    WebkitBackdropFilter: "blur(9px)",
+                    color: "rgba(255,255,255,0.74)",
+                    fontSize: 9,
+                    textAlign: "right",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {tag || "CIVIL-ART"}{year ? `  ·  ${year}` : ""}
+                  {specs.length > 0 ? `  ·  ${specs[0].label}: ${specs[0].value}` : ""}
+                </div>
               </button>
             ))}
           </div>

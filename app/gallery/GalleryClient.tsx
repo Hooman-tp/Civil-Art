@@ -9,6 +9,10 @@ type GalleryProject = {
   slug: string;
   category: ProjectCategory;
   name: string;
+  tag: string;
+  shortDesc: string;
+  year: string;
+  specs: { label: string; value: string }[];
   coverSrc: string | null;
 };
 
@@ -118,9 +122,9 @@ export default function GalleryClient({ projects }: { projects: GalleryProject[]
       {/* ── گرید گالری ── */}
       <section
         style={{
-          maxWidth: "1200px",
+          maxWidth: "1280px",
           margin: "0 auto",
-          padding: "0 24px 100px",
+          padding: "20px 24px 110px",
         }}
       >
         {filtered.length === 0 ? (
@@ -131,23 +135,32 @@ export default function GalleryClient({ projects }: { projects: GalleryProject[]
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-              gap: "28px",
+              gridTemplateColumns: "repeat(12,minmax(0,1fr))",
+              gap: "18px",
+              alignItems: "start",
             }}
           >
             {filtered.map((p) => {
               const imageIndex = filteredWithImages.findIndex((x) => x.slug === p.slug);
 
               return (
-                <ProjectCard
+                <div
                   key={p.slug}
+                  style={{ gridColumn: filtered.indexOf(p) % 5 === 0 ? "span 7" : filtered.indexOf(p) % 5 === 1 ? "span 5" : "span 4" }}
+                  className="gallery-editorial-cell"
+                >
+                <ProjectCard
                   href={`/projects/${p.slug}`}
                   coverSrc={p.coverSrc}
                   alt={p.name || p.category}
                   title={p.name || p.slug}
-                  tag={p.category}
+                  tag={p.tag || p.category}
+                  description={p.shortDesc}
+                  year={p.year}
+                  specs={p.specs}
                   onImageClick={imageIndex >= 0 ? () => setActiveIndex(imageIndex) : undefined}
                 />
+                </div>
               );
             })}
           </div>
@@ -162,6 +175,15 @@ export default function GalleryClient({ projects }: { projects: GalleryProject[]
           onNavigate={setActiveIndex}
         />
       )}
+
+      <style>{`
+        @media (max-width: 900px) {
+          .gallery-editorial-cell { grid-column: span 6 !important; }
+        }
+        @media (max-width: 560px) {
+          .gallery-editorial-cell { grid-column: 1 / -1 !important; }
+        }
+      `}</style>
     </div>
   );
 }

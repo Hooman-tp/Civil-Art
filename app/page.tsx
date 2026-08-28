@@ -25,10 +25,9 @@ export default function Home() {
       {/* ── آمار سریع (حالا با پس‌زمینه‌ی سه‌بعدیِ سینمایی؛ محتوا/اعداد دقیقاً همان قبلی) ── */}
       <CinematicStatsSection
         stats={[
-          { icon: <IconBuilding />, value: "+۱۲۰", label: "پروژه تکمیل شده" },
-          { icon: <IconMedal />, value: "+۱۸", label: "سال تجربه" },
+          { icon: <IconBuilding />, value: "+۲۷", label: "پروژه تکمیل شده" },
+          { icon: <IconMedal />, value: "+۲۰", label: "سال تجربه" },
           { icon: <IconTeam />, value: "+۶۰", label: "نیروی متخصص" },
-          { icon: <IconHandshake />, value: "+۴۰", label: "کارفرمای دائمی" },
         ]}
       />
 

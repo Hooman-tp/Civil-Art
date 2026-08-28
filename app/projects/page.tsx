@@ -31,7 +31,7 @@ export default function ProjectsPage() {
         <div style={{ display: "inline-flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
           <div style={{ width: 40, height: 2, background: "#D4AF37" }} />
           <span style={{ color: "#D4AF37", letterSpacing: "5px", fontSize: "13px", fontWeight: 700 }}>
-            نمونه کارها
+            پروژه‌ها
           </span>
           <div style={{ width: 40, height: 2, background: "#D4AF37" }} />
         </div>

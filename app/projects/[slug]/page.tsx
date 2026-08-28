@@ -102,9 +102,16 @@ export default async function ProjectDetailPage({
       </section>
 
       {/* ── عکس شاخص + گالری تعاملی (کلیک برای بزرگ‌نمایی) ── */}
-      <ProjectGalleryClient cover={cover} gallery={gallery} alt={displayName} />
+      <ProjectGalleryClient
+        cover={cover}
+        gallery={gallery}
+        alt={displayName}
+        tag={project.tag || project.category}
+        year={project.year}
+        specs={project.specs}
+      />
 
-      {/* ── مشخصات فنی ── */}
+      {/* ── مشخصات پروژه ── */}
       {project.specs.length > 0 && (
         <section
           style={{
@@ -123,7 +130,7 @@ export default async function ProjectDetailPage({
             }}
           >
             {project.specs.map((s) => (
-              <div key={s.label}>
+              <div key={s.label} style={{ padding: "16px", borderRadius: "14px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(212,175,55,0.12)" }}>
                 <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>
                   {s.label}
                 </div>

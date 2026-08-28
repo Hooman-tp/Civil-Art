@@ -11,6 +11,7 @@ export type ProjectCardProps = {
   tag?: string;
   description?: string;
   year?: string;
+  specs?: { label: string; value: string }[];
   /**
    * اگر مقدار داده شود، کلیک روی عکس این تابع را صدا می‌زند (برای باز
    * کردن Lightbox) به‌جای رفتن مستقیم به صفحه‌ی پروژه. دکمه‌ی «مشاهده
@@ -27,6 +28,7 @@ export default function ProjectCard({
   tag,
   description,
   year,
+  specs = [],
   onImageClick,
 }: ProjectCardProps) {
   const imageBox = (
@@ -86,21 +88,19 @@ export default function ProjectCard({
         </Link>
       )}
 
-      {/*
-        پنل اطلاعات روی لبه‌ی پایین عکس روکش می‌شود (margin منفی) تا حس
-        عمق و لایه‌بندی بدهد. دکمه‌ی CTA دقیقاً روی خط اتصال عکس و پنل
-        شناور است (موقعیت‌دهی کامل داخل globals.css در کلاس project-card-cta).
-      */}
+      {/* اطلاعات پروژه روی تصویر: شیشه‌ای و مینیمال، بدون افکت سنگین */}
       <div
         style={{
           position: "relative",
           zIndex: 2,
-          margin: "-34px 16px 0",
-          background: "#111113",
-          border: "1px solid rgba(212,175,55,0.22)",
-          borderRadius: "16px",
-          padding: "30px 20px 18px",
-          boxShadow: "0 10px 26px rgba(0,0,0,0.35)",
+          margin: "-42px 14px 0",
+          background: "rgba(10,10,12,0.58)",
+          border: "1px solid rgba(212,175,55,0.24)",
+          borderRadius: "18px",
+          padding: "25px 20px 18px",
+          boxShadow: "0 14px 34px rgba(0,0,0,0.34)",
+          backdropFilter: "blur(14px) saturate(120%)",
+          WebkitBackdropFilter: "blur(14px) saturate(120%)",
         }}
       >
         <Link href={href} className="project-card-cta">
@@ -108,27 +108,29 @@ export default function ProjectCard({
         </Link>
 
         {tag && (
-          <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "1.5px", marginBottom: "6px" }}>
+          <div style={{ fontSize: "9px", color: "#D4AF37", letterSpacing: "2px", marginBottom: "7px", textTransform: "uppercase" }}>
             {tag}
           </div>
         )}
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 700,
-            color: "#fff",
-            marginBottom: description ? "6px" : year ? "10px" : 0,
-            lineHeight: 1.6,
-          }}
-        >
+        <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#fff", marginBottom: description ? "6px" : year ? "9px" : 0, lineHeight: 1.55 }}>
           {title}
         </h3>
         {description && (
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.8, marginBottom: year ? "10px" : 0 }}>
+          <p style={{ color: "rgba(255,255,255,0.68)", fontSize: "12px", lineHeight: 1.9, marginBottom: year || specs.length ? "10px" : 0 }}>
             {description}
           </p>
         )}
-        {year && <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>{year}</span>}
+        {year && <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.42)" }}>{year}</span>}
+        {specs.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "7px 14px", marginTop: "12px", paddingTop: "11px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            {specs.slice(0, 6).map((spec) => (
+              <div key={spec.label}>
+                <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "9px", marginBottom: "2px" }}>{spec.label}</div>
+                <div style={{ color: "rgba(255,255,255,0.78)", fontSize: "10px", fontWeight: 600 }}>{spec.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

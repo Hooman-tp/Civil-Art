@@ -21,6 +21,10 @@ export default function GalleryPage() {
     slug: p.slug,
     category: p.category,
     name: p.name,
+    tag: p.tag,
+    shortDesc: p.shortDesc,
+    year: p.year,
+    specs: p.specs,
     coverSrc: getProjectCover(p.slug),
   }));
 

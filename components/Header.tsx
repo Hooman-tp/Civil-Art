@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/projects", label: "پروژه‌ها" },
   { href: "/gallery", label: "گالری" },
   { href: "/team", label: "تیم ما" },
+  { href: "/careers", label: "همکاری با ما" },
   { href: "/contact", label: "تماس" },
 ];
 
@@ -156,7 +157,11 @@ export default function Header() {
             flexDirection: "column",
             padding: "8px 24px 20px",
             gap: "4px",
-            borderTop: "1px solid rgba(212,175,55,0.1)",
+            borderTop: "1px solid rgba(212,175,55,0.16)",
+            background: "rgba(8,8,10,0.94)",
+            backdropFilter: "blur(18px) saturate(120%)",
+            WebkitBackdropFilter: "blur(18px) saturate(120%)",
+            boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
             maxHeight: "70vh",
             overflowY: "auto",
           }}
