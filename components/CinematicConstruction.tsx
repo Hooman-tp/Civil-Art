@@ -390,7 +390,7 @@ export default function CinematicConstruction() {
             .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
-            .ca-location-tag { bottom: 2.25rem !important; left: 1.1rem !important; }
+            .ca-location-tag { bottom: 2.25rem !important; right: 1.1rem !important; left: auto !important; text-align: right !important; }
             .ca-location-tag span { font-size: 22px !important; }
           }
         `}</style>
@@ -410,7 +410,7 @@ export default function CinematicConstruction() {
         {/* برچسبِ مکانِ فعلی؛ محتوای متن مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود؛ انیمیشن روی wrapper اعمال می‌شود تا متن+خط زیرش با هم حرکت کنند */}
         <div
           className="ca-location-tag"
-          style={{ position: "absolute", bottom: "4rem", left: "3rem", zIndex: 10 }}
+          style={{ position: "absolute", bottom: "4rem", right: "3rem", zIndex: 10, textAlign: "right" }}
         >
           <div ref={locationWrapRef}>
             <span
@@ -426,16 +426,7 @@ export default function CinematicConstruction() {
             >
               {LOCATIONS[0].label}
             </span>
-            <div
-              style={{
-                width: 64,
-                height: 3,
-                marginTop: 12,
-                borderRadius: 2,
-                background: "linear-gradient(to right,#D4AF37,#f5e08a)",
-                boxShadow: "0 0 14px rgba(212,175,55,0.6)",
-              }}
-            />
+
           </div>
         </div>
 
