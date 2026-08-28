@@ -148,8 +148,8 @@ export default function CinematicWorld({ progressRef, depth = 140, buildingCount
 
   return (
     <Canvas
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      dpr={1}
+      gl={{ antialias: false, powerPreference: "high-performance" }}
       camera={{ fov: 52, near: 0.1, far: 200 }}
       style={{ position: "absolute", inset: 0 }}
     >
@@ -159,13 +159,13 @@ export default function CinematicWorld({ progressRef, depth = 140, buildingCount
       <FlythroughCamera progressRef={progressRef} depth={depth} />
       <BlueprintFloor size={220} />
       <HorizonGlow depth={depth} />
-      <GoldDust count={700} depth={depth + 10} />
+      <GoldDust count={400} depth={depth + 10} />
       {buildings.map((b, i) => (
         <Building key={i} {...b} />
       ))}
 
       <EffectComposer>
-        <Bloom intensity={0.85} luminanceThreshold={0.15} luminanceSmoothing={0.55} mipmapBlur />
+        <Bloom intensity={0.75} luminanceThreshold={0.18} luminanceSmoothing={0.6} mipmapBlur />
       </EffectComposer>
     </Canvas>
   );

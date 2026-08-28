@@ -16,6 +16,7 @@ const VIDEO_SRC = "/videos/construction.mp4";
   و قرار دادن در public/videos/construction-poster.jpg
 */
 const POSTER_SRC = "/videos/construction-poster.jpg";
+const LOGO_SRC = "/images/civil-art-logo.png";
 
 /*
   ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
@@ -42,29 +43,145 @@ const SEEK_EPSILON = 0.008;
   می‌بُرد که فقط برشِ مرکزیِ ~۲۶٪ عرضِ فریم دیده می‌شد — دقیقاً همان
   چیزی که «زوم‌شده» به‌نظر می‌رسید.
 
-  الان دوباره تشخیصِ نسبت‌ابعاد برگشته: وقتی این نسبت از این عدد
-  بیشتر شود (گوشیِ عمودی با این ویدیوی افقی)، به‌جای cover از contain
-  استفاده می‌شود (کل فریم دیده می‌شود، بدون برشِ تهاجمی) و پشتش یک
-  پرکننده‌ی بلورشده قرار می‌گیرد تا فضای خالیِ اطراف، سیاهِ خشک نباشد.
-
-  تفاوتِ کلیدی با تلاشِ قبلی: آن پرکننده قبلاً یک <video> دومِ
-  بلورشده (با filter:blur) بود که روی آیفونِ واقعی به‌جای بلورِ ویدیو،
-  کاملاً سیاه رندر می‌شد (یک باگِ شناخته‌شده‌ی iOS Safari در ترکیبِ
-  filter با <video>). الان پرکننده یک <img> بلورشده از همان
-  POSTER_SRC است — یک عکسِ ساکن، نه ویدیو — که filter:blur() رویش
-  در همه‌ی مرورگرها (از جمله iOS Safari) قابل‌اعتماد و بدون این باگ
-  رندر می‌شود. چون این لایه فقط تزئینی/محو است (نه چیزی که باید
-  هم‌زمان با اسکرول پخش شود)، یک فریمِ ثابتِ بلورشده از نظر بصری کاملاً
-  کافی است.
+  دوباره تشخیصِ نسبت‌ابعاد فعاله: وقتی این نسبت از این عدد بیشتر شود
+  (گوشیِ عمودی با این ویدیوی افقی)، به‌جای cover از contain استفاده
+  می‌شود (کل فریم دیده می‌شود، بدون برشِ تهاجمی) و پشتش یک پرکننده‌ی
+  بلورشده (یک <img> ساکن از POSTER_SRC، نه ویدیو — چون blur روی
+  <video> رو iOS Safari باگ شناخته‌شده دارد) قرار می‌گیرد.
 */
 const ASPECT_MISMATCH_THRESHOLD = 1.5;
+
+/*
+  مکان هر بخش از خانه بر حسب ثانیه‌ی واقعیِ ویدیو. این اعداد از روی
+  خودِ فایل construction.mp4 استخراج شدند (فریم‌برداری هر ۱ ثانیه و
+  بررسی دستیِ محتوای هر بخش)، نه حدسی — یعنی با تصویر واقعی ویدیو
+  منطبق است.
+*/
+const LOCATIONS: { time: number; label: string }[] = [
+  { time: 0,  label: "ورودی" },
+  { time: 5,  label: "آشپزخانه و ناهارخوری" },
+  { time: 11, label: "سینمای خانگی" },
+  { time: 15, label: "نشیمن" },
+  { time: 19, label: "محوطه و استخر" },
+  { time: 28, label: "نشیمن و راهرو" },
+  { time: 35, label: "پلکان" },
+  { time: 45, label: "اتاق خواب اصلی" },
+  { time: 49, label: "تراس اختصاصی" },
+  { time: 53, label: "حمام و رختکن" },
+];
+
+// نسبتی از کل مسیرِ اسکرول (نه ثانیه‌ی ویدیو) که طی آن صفحه‌ی مقدمه محو می‌شود
+const INTRO_FADE_END = 0.035;
+
+/*
+  یک تولیدکننده‌ی عددِ شبه‌تصادفیِ «قطعی» (deterministic): برای عددِ
+  seed یکسان، همیشه خروجیِ یکسان می‌دهد. چرا نه Math.random ساده؟
+  چون این کامپوننت روی سرور هم یک‌بار رندر می‌شود (SSR) و بعد روی
+  کلاینت هم (hydration) — اگر موقعیتِ ستاره‌ها با Math.random ساخته
+  می‌شد، هر بار عددی متفاوت می‌داد و React یک hydration mismatch
+  گزارش می‌کرد (HTML سرور با HTML کلاینت فرق می‌کرد). با این تابع،
+  سرور و کلاینت دقیقاً یک الگوی ستاره‌ی یکسان تولید می‌کنند.
+*/
+function seededRandom(seed: number) {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+/*
+  آسمانِ پرستاره به‌عنوان یک SVG استاتیک (همون تکنیکِ BLUEPRINT_GRID
+  که جای دیگه‌ی پروژه استفاده شده: یک الگوی SVG به‌صورت data-URI در
+  background-image). عمداً DOM جداگانه برای هر ستاره ساخته نشده
+  (۱۵۰+ المان با انیمیشنِ جداگانه روی موبایل هزینه‌ی رندر داره)؛ به‌جاش
+  یک تصویرِ ثابت با چشمک‌زنیِ نرمِ کلی روی کل لایه.
+*/
+const STAR_FIELD_BG = (() => {
+  const W = 1000;
+  const H = 700;
+  const circles: string[] = [];
+  for (let i = 0; i < 170; i++) {
+    const x = seededRandom(i * 12.9898) * W;
+    const y = seededRandom(i * 78.233 + 7) * H;
+    const r = 0.5 + seededRandom(i * 37.719 + 3) * 1.3;
+    const o = 0.25 + seededRandom(i * 93.989 + 5) * 0.65;
+    circles.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#F5D78E" fill-opacity="${o.toFixed(2)}"/>`);
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${circles.join("")}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+})();
+
+function ChevronDownIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef   = useRef<HTMLVideoElement>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
+  const locationLabelRef = useRef<HTMLSpanElement>(null);
+  const lastLocationRef = useRef<string>(LOCATIONS[0].label);
 
-  const [ready, setReady] = useState(false);
+  /*
+    این کامنت رو به‌روز می‌کنم چون فهمیدیم مشکل فقط رو موبایله، نه
+    دسکتاپ — این خودش خیلی چیز مهمی رو مشخص می‌کنه: این دقیقاً همون
+    امضای یک سیاستِ شناخته‌شده‌ی iOS Safari/WebKit است، نه یک مسابقه‌ی
+    hydration (که باید رو هر دو پلتفرم یکسان ظاهر می‌شد).
+
+    iOS Safari، برای صرفه‌جویی در مصرفِ داده/باتری، preload="auto" رو
+    روی یک <video> که autoplay نداره محافظه‌کارانه‌تر از دسکتاپ در نظر
+    می‌گیره — و در برخی حالت‌ها واقعاً بارگذاریِ داده رو تا وقتی یک
+    فراخوانیِ واقعیِ play() (نه صرفاً اسکرول) رخ نده، متوقف/لغو نگه
+    می‌داره. چون ویدیوی ما muted است، این play() از نظر سیاست‌های
+    autoplay مرورگرها مجاز است (autoplayِ بی‌صدا همه‌جا مجاز است).
+    بلافاصله بعدش pause می‌کنیم تا چیزی به‌صورت ناخواسته «پخش» نشه —
+    خودِ کنترلِ currentTime رو کدِ اسکرول انجام می‌ده، نه پخشِ خطی.
+
+    چرا «برو یه صفحه‌ی دیگه، برگرد» قبلاً درستش می‌کرد: تپ‌کردن روی
+    یک لینک یک user activation قویه که این محدودیت رو برای کلِ session
+    باز می‌کنه؛ اسکرولِ صرف همیشه به همون اندازه قوی حساب نمی‌شه.
+  */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.src = VIDEO_SRC;
+    video.load();
+
+    const unlockPromise = video.play();
+    if (unlockPromise && typeof unlockPromise.then === "function") {
+      unlockPromise
+        .then(() => video.pause())
+        .catch(() => {
+          // اگه مرورگر حتی muted-autoplay رو هم اجازه نده، مشکلی نیست؛
+          // فقط یعنی این unlock جواب نداده، بدون کرش‌کردنِ برنامه
+        });
+    }
+  }, []);
+
+  /*
+    اقدام احتیاطی (defensive): اگه به هر دلیلی — شبکه، مرورگر خاص،
+    شرایطی که من نتونستم توی محیط تستم شبیه‌سازی کنم — بارگذاریِ
+    ویدیو گیر کرد و هیچ‌وقت حتی یک بایت هم نگرفت (NETWORK_NO_SOURCE)،
+    یک تلاشِ دوباره‌ی خودکار انجام می‌شه. اگه ویدیو عادی لود بشه، این
+    شرط هیچ‌وقت true نمی‌شه و کاملاً بی‌اثره — هیچ ضرری نداره.
+  */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const NETWORK_NO_SOURCE = 3;
+    const timer = setTimeout(() => {
+      if (video.readyState === 0 && video.networkState === NETWORK_NO_SOURCE) {
+        video.load();
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   useEffect(() => {
@@ -84,23 +201,6 @@ export default function CinematicConstruction() {
 
     const onLoadedMetadata = () => {
       recomputeFitMode();
-      setReady(true);
-
-      /*
-        رفع «رو رفرش، فیلم ثابته؛ باید برم یه صفحه‌ی دیگه و برگردم»:
-        SmoothScroll (و Lenis داخلش) توی app/layout.tsx و فقط یک‌بار
-        در کل عمر برنامه ساخته می‌شود؛ روی navigation بین صفحات دوباره
-        ساخته نمی‌شود، فقط روی reload کامل. طبق کامنتِ خودِ
-        hooks/useLenis.ts، نمونه‌ی Lenis روی window.__lenis در دسترسه.
-
-        نظریه: روی یک ری‌لود کامل (بر خلاف SPA navigation که JS از قبل
-        گرم است)، effect این کامپوننت ممکنه زودتر از اینکه Lenis کاملاً
-        ارتفاعِ صفحه رو (که با اضافه‌شدنِ این بخشِ ۵۰۰vh‌ای عوض می‌شه)
-        اندازه‌گیری کنه اجرا بشه. یک lenis.resize() صریح، درست بعد از
-        اینکه ارتفاعِ نهاییِ این بخش مشخص شد (همینجا، بعد از
-        loadedmetadata)، این عدم‌هماهنگی رو رفع می‌کنه، بدون اینکه به
-        useLenis.ts دست بزنیم.
-      */
       requestAnimationFrame(() => {
         (window as unknown as { __lenis?: { resize?: () => void } }).__lenis?.resize?.();
       });
@@ -166,6 +266,13 @@ export default function CinematicConstruction() {
         progressFillRef.current.style.width = `${p * 100}%`;
       }
 
+      // محو شدنِ صفحه‌ی مقدمه، فقط بر اساسِ پیشرفتِ خامِ اسکرول (نه آماده‌بودنِ ویدیو)
+      if (introRef.current) {
+        const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
+        introRef.current.style.opacity = String(introOpacity);
+        introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
+      }
+
       if (!(video.readyState >= 2 && video.duration)) return;
 
       const targetTime = p * video.duration;
@@ -180,6 +287,20 @@ export default function CinematicConstruction() {
 
       if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
         video.currentTime = displayedTime;
+      }
+
+      // برچسبِ مکان: کدام بخش از خانه، بر اساس ثانیه‌ی واقعیِ نمایش‌داده‌شده
+      let currentLabel = LOCATIONS[0].label;
+      for (let i = LOCATIONS.length - 1; i >= 0; i--) {
+        if (displayedTime >= LOCATIONS[i].time) { currentLabel = LOCATIONS[i].label; break; }
+      }
+      if (currentLabel !== lastLocationRef.current && locationLabelRef.current) {
+        lastLocationRef.current = currentLabel;
+        const el = locationLabelRef.current;
+        el.textContent = currentLabel;
+        el.style.animation = "none";
+        void el.offsetWidth;
+        el.style.animation = "caLocFade 0.45s ease forwards";
       }
     };
 
@@ -202,8 +323,8 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
+        {/* پرکننده‌ی بلورشده‌ی پس‌زمینه؛ فقط وقتی fitMode برابر contain است مونت می‌شود (نسبت ابعاد ویدیو و ویوپورت خیلی فرق دارند) */}
         {fitMode === "contain" && (
-          // پرکننده‌ی بلورشده‌ی پس‌زمینه — یک <img> ساکن، نه ویدیو (توضیح در کامنت بالای ASPECT_MISMATCH_THRESHOLD)
           <img
             src={POSTER_SRC}
             alt=""
@@ -232,8 +353,11 @@ export default function CinematicConstruction() {
           <video
             ref={videoRef}
             muted
+            autoPlay
             playsInline
             preload="auto"
+            // @ts-expect-error -- fetchPriority is valid HTML but not yet in this TS/React version's JSX video element types
+            fetchpriority="high"
             poster={POSTER_SRC}
             aria-hidden="true"
             style={{
@@ -243,17 +367,30 @@ export default function CinematicConstruction() {
               objectFit: fitMode,
               objectPosition: "center",
             }}
-          >
-            <source src={VIDEO_SRC} type="video/mp4" />
-          </video>
+          />
         </div>
 
         <style>{`
           @keyframes caSpin { to { transform:rotate(360deg); } }
+          @keyframes caLocFade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
+          @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
 
           /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
           @supports (height: 100dvh) {
             .cinematic-sticky { height: 100dvh !important; }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .ca-intro-stars, .ca-chevron { animation: none !important; }
+          }
+
+          @media (max-width: 768px) {
+            .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
+            .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
+            .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
+            .ca-location-tag { bottom: 1.75rem !important; right: 1.1rem !important; }
+            .ca-location-tag span { font-size: 11px !important; }
           }
         `}</style>
 
@@ -269,14 +406,69 @@ export default function CinematicConstruction() {
           <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        {!ready && (
-          <div style={{ position: "absolute", inset: 0, zIndex: 25, background: "#050505", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ width: 36, height: 36, margin: "0 auto", border: "2px solid rgba(212,175,55,0.12)", borderTop: "2px solid #D4AF37", borderRadius: "50%", animation: "caSpin 0.8s linear infinite" }} />
-              <p style={{ color: "#D4AF37", fontSize: 11, letterSpacing: 4, marginTop: 14 }}>در حال بارگذاری...</p>
+        {/* برچسبِ مکانِ فعلی؛ محتوایش مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود */}
+        <div
+          className="ca-location-tag"
+          style={{ position: "absolute", bottom: "3.5rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 10 }}
+        >
+          <div style={{ width: 24, height: 1, background: "#D4AF37" }} />
+          <span ref={locationLabelRef} style={{ color: "#fff", fontSize: 13, fontWeight: 600, letterSpacing: 0.5 }}>
+            {LOCATIONS[0].label}
+          </span>
+        </div>
+
+        {/*
+          صفحه‌ی مقدمه: لوگو + عنوان + راهنمای اسکرول، روی زمینه‌ی
+          آسمانِ پرستاره. کاملاً مستقل از آماده‌بودنِ ویدیوست (به محضِ
+          رندرِ کامپوننت نمایش داده می‌شود، نه بعد از لودِ ویدیو) و با
+          شروعِ اسکرول محو می‌شود. اسپینرِ لودینگِ قبلی حذف شد چون این
+          صفحه همان نقش را بهتر ایفا می‌کند: هم برندشده است، هم به
+          کاربر می‌گوید چه‌کار کند، و در فاصله‌ای که کاربر آن را
+          می‌خواند، ویدیو فرصتِ لود شدن پیدا می‌کند.
+        */}
+        <div
+          ref={introRef}
+          style={{
+            position: "absolute", inset: 0, zIndex: 20,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            textAlign: "center", padding: "0 24px",
+            backgroundColor: "#050505",
+          }}
+        >
+          <div
+            className="ca-intro-stars"
+            style={{
+              position: "absolute", inset: 0,
+              backgroundImage: STAR_FIELD_BG,
+              backgroundRepeat: "repeat",
+              animation: "caTwinkle 6s ease-in-out infinite",
+            }}
+          />
+
+          <div style={{ position: "relative" }}>
+            <img
+              src={LOGO_SRC}
+              alt="Civil-Art"
+              className="ca-intro-logo"
+              style={{ height: 110, width: "auto", marginBottom: 32, display: "block", marginInline: "auto" }}
+            />
+            <h1
+              className="ca-intro-title"
+              style={{ color: "#fff", fontSize: "clamp(26px,4.5vw,48px)", fontWeight: 900, lineHeight: 1.35, maxWidth: 820, margin: "0 auto" }}
+            >
+              به ویلای لوکس و مدرن نزدیک شوید
+            </h1>
+            <p
+              className="ca-intro-sub"
+              style={{ color: "#D4AF37", fontSize: 14, letterSpacing: 1, marginTop: 18 }}
+            >
+              برای شروع اسکرول کنید
+            </p>
+            <div className="ca-chevron" style={{ marginTop: 20, display: "flex", justifyContent: "center", animation: "caChevronBounce 1.8s ease-in-out infinite" }}>
+              <ChevronDownIcon />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
