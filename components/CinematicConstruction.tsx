@@ -346,8 +346,6 @@ export default function CinematicConstruction() {
         locationLabelRef.current.textContent = currentLabel;
         const wrap = locationWrapRef.current;
         wrap.style.animation = "none";
-        void wrap.offsetWidth;
-        wrap.style.animation = "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
       }
     };
 
@@ -422,10 +420,10 @@ export default function CinematicConstruction() {
 
         <style>{`
           @keyframes caSpin { to { transform:rotate(360deg); } }
-          @keyframes caLocFade { 0% { opacity:0; transform:translate3d(34px,0,0) scale(0.96); filter:blur(7px); } 55% { opacity:0.82; filter:blur(1.5px); } 100% { opacity:1; transform:translate3d(0,0,0) scale(1); filter:blur(0); } }
+          
           @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
           @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
-          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#fff0a8 0%,#f5d76e 24%,#d4af37 52%,#ffd95a 76%,#b8860b 100%); background-clip:text; -webkit-background-clip:text; color:transparent; text-shadow:0 3px 22px rgba(0,0,0,0.72); filter:drop-shadow(0 0 12px rgba(212,175,55,0.28)); }
+          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#fff0a8 0%,#f5d76e 24%,#d4af37 52%,#ffd95a 76%,#b8860b 100%); background-clip:text; -webkit-background-clip:text; color:transparent;  }
 
           /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
           @supports (height: 100dvh) {
