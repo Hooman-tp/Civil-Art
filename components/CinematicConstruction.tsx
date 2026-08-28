@@ -422,9 +422,11 @@ export default function CinematicConstruction() {
 
         <style>{`
           @keyframes caSpin { to { transform:rotate(360deg); } }
-          @keyframes caLocFade { from { opacity:0; transform:translateX(-26px) scale(0.94); } to { opacity:1; transform:translateX(0) scale(1); } }
+          @keyframes caLocFade { 0% { opacity:0; transform:translate3d(34px,0,0) scale(0.96); filter:blur(7px); } 55% { opacity:0.82; filter:blur(1.5px); } 100% { opacity:1; transform:translate3d(0,0,0) scale(1); filter:blur(0); } }
           @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
           @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
+          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#ffffff 15%,#f5e08a 52%,#d4af37 100%); background-clip:text; -webkit-background-clip:text; color:transparent; text-shadow:0 3px 22px rgba(0,0,0,0.72); filter:drop-shadow(0 0 10px rgba(212,175,55,0.12)); }
+          .ca-location-text::after { content:""; position:absolute; right:0; bottom:-8px; width:34px; height:2px; border-radius:99px; background:linear-gradient(to left,#f5e08a,#d4af37); box-shadow:0 0 12px rgba(212,175,55,0.45); opacity:0.9; }
 
           /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
           @supports (height: 100dvh) {
@@ -439,8 +441,8 @@ export default function CinematicConstruction() {
             .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
-            .ca-location-tag { bottom: 2.25rem !important; left: 1.1rem !important; }
-            .ca-location-tag span { font-size: 22px !important; }
+            .ca-location-tag { bottom: 2.25rem !important; right: 1.1rem !important; left: auto !important; text-align: right !important; }
+            .ca-location-tag span { font-size: 22px !important; } .ca-location-text::after { bottom: -6px; width: 28px; }
           }
         `}</style>
 
@@ -459,32 +461,22 @@ export default function CinematicConstruction() {
         {/* برچسبِ مکانِ فعلی؛ محتوای متن مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود؛ انیمیشن روی wrapper اعمال می‌شود تا متن+خط زیرش با هم حرکت کنند */}
         <div
           className="ca-location-tag"
-          style={{ position: "absolute", bottom: "4rem", left: "3rem", zIndex: 10 }}
+          style={{ position: "absolute", bottom: "4rem", right: "3rem", zIndex: 10, textAlign: "right" }}
         >
           <div ref={locationWrapRef}>
             <span
               ref={locationLabelRef}
+              className="ca-location-text"
               style={{
-                display: "block",
-                color: "#fff",
                 fontSize: 34,
                 fontWeight: 900,
                 letterSpacing: 0.3,
-                textShadow: "0 2px 24px rgba(0,0,0,0.7)",
+                lineHeight: 1.2,
               }}
             >
               {LOCATIONS[0].label}
             </span>
-            <div
-              style={{
-                width: 64,
-                height: 3,
-                marginTop: 12,
-                borderRadius: 2,
-                background: "linear-gradient(to right,#D4AF37,#f5e08a)",
-                boxShadow: "0 0 14px rgba(212,175,55,0.6)",
-              }}
-            />
+
           </div>
         </div>
 
