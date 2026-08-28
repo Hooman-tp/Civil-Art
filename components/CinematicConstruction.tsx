@@ -123,6 +123,7 @@ export default function CinematicConstruction() {
   const progressFillRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const locationLabelRef = useRef<HTMLSpanElement>(null);
+  const locationWrapRef = useRef<HTMLDivElement>(null);
   const lastLocationRef = useRef<string>(LOCATIONS[0].label);
 
   /*
@@ -294,13 +295,13 @@ export default function CinematicConstruction() {
       for (let i = LOCATIONS.length - 1; i >= 0; i--) {
         if (displayedTime >= LOCATIONS[i].time) { currentLabel = LOCATIONS[i].label; break; }
       }
-      if (currentLabel !== lastLocationRef.current && locationLabelRef.current) {
+      if (currentLabel !== lastLocationRef.current && locationLabelRef.current && locationWrapRef.current) {
         lastLocationRef.current = currentLabel;
-        const el = locationLabelRef.current;
-        el.textContent = currentLabel;
-        el.style.animation = "none";
-        void el.offsetWidth;
-        el.style.animation = "caLocFade 0.45s ease forwards";
+        locationLabelRef.current.textContent = currentLabel;
+        const wrap = locationWrapRef.current;
+        wrap.style.animation = "none";
+        void wrap.offsetWidth;
+        wrap.style.animation = "caLocFade 0.55s cubic-bezier(0.16,1,0.3,1) forwards";
       }
     };
 
@@ -356,8 +357,8 @@ export default function CinematicConstruction() {
             autoPlay
             playsInline
             preload="auto"
-            // @ts-expect-error -- fetchPriority is valid HTML but not yet in this TS/React version's JSX video element types
-            fetchpriority="high"
+            // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
+            fetchPriority="high"
             poster={POSTER_SRC}
             aria-hidden="true"
             style={{
@@ -372,7 +373,7 @@ export default function CinematicConstruction() {
 
         <style>{`
           @keyframes caSpin { to { transform:rotate(360deg); } }
-          @keyframes caLocFade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes caLocFade { from { opacity:0; transform:translateX(-26px) scale(0.94); } to { opacity:1; transform:translateX(0) scale(1); } }
           @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
           @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
 
@@ -389,8 +390,8 @@ export default function CinematicConstruction() {
             .ca-intro-logo { height: 72px !important; margin-bottom: 24px !important; }
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
-            .ca-location-tag { bottom: 1.75rem !important; right: 1.1rem !important; }
-            .ca-location-tag span { font-size: 11px !important; }
+            .ca-location-tag { bottom: 2.25rem !important; left: 1.1rem !important; }
+            .ca-location-tag span { font-size: 22px !important; }
           }
         `}</style>
 
@@ -406,15 +407,36 @@ export default function CinematicConstruction() {
           <div ref={progressFillRef} style={{ height: "100%", width: "0%", background: "linear-gradient(to left,#D4AF37,#f5e08a)" }} />
         </div>
 
-        {/* برچسبِ مکانِ فعلی؛ محتوایش مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود */}
+        {/* برچسبِ مکانِ فعلی؛ محتوای متن مستقیم روی DOM آپدیت می‌شود (نه state) تا اسکرول باعثِ re-render نشود؛ انیمیشن روی wrapper اعمال می‌شود تا متن+خط زیرش با هم حرکت کنند */}
         <div
           className="ca-location-tag"
-          style={{ position: "absolute", bottom: "3.5rem", right: "3rem", zIndex: 10, display: "flex", alignItems: "center", gap: 10 }}
+          style={{ position: "absolute", bottom: "4rem", left: "3rem", zIndex: 10 }}
         >
-          <div style={{ width: 24, height: 1, background: "#D4AF37" }} />
-          <span ref={locationLabelRef} style={{ color: "#fff", fontSize: 13, fontWeight: 600, letterSpacing: 0.5 }}>
-            {LOCATIONS[0].label}
-          </span>
+          <div ref={locationWrapRef}>
+            <span
+              ref={locationLabelRef}
+              style={{
+                display: "block",
+                color: "#fff",
+                fontSize: 34,
+                fontWeight: 900,
+                letterSpacing: 0.3,
+                textShadow: "0 2px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              {LOCATIONS[0].label}
+            </span>
+            <div
+              style={{
+                width: 64,
+                height: 3,
+                marginTop: 12,
+                borderRadius: 2,
+                background: "linear-gradient(to right,#D4AF37,#f5e08a)",
+                boxShadow: "0 0 14px rgba(212,175,55,0.6)",
+              }}
+            />
+          </div>
         </div>
 
         {/*

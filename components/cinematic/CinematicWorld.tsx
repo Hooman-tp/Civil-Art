@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
@@ -98,8 +98,34 @@ function HorizonGlow({ depth }: { depth: number }) {
  * صحنه به جلو «پرواز» می‌کند؛ کمی بالا/پایین و تابِ افقیِ ظریف برای
  * حسِ سینمایی، نه یک خطِ صافِ رباتیک.
  */
+/*
+  رفعِ «رو موبایل زوم‌شده»: قبلاً FOV (میدان دیدِ دوربین) یه عدد ثابت
+  (۵۲ درجه) بود. FOV در Three.js یعنی FOVِ عمودی؛ FOVِ افقی از روی
+  FOVِ عمودی و نسبت‌ابعادِ صفحه محاسبه می‌شه. رو یه صفحه‌ی باریک/عمودی
+  (گوشی)، همون ۵۲ درجه‌ی عمودی با یه نسبت‌ابعادِ خیلی کوچیک ترکیب
+  می‌شه و FOVِ افقیِ خیلی کمی نتیجه می‌ده — یعنی عملاً کمتر از عرضِ
+  صحنه دیده می‌شه، دقیقاً همون حسِ «زوم‌شده». اینجا FOV رو بر اساسِ
+  نسبت‌ابعادِ واقعیِ صفحه تنظیم می‌کنیم: رو صفحه‌های باریک، FOV رو
+  ملایم زیاد می‌کنیم (با یه سقفِ منطقی که به فیش‌آی نرسه) تا عرضِ
+  بیشتری از صحنه دیده بشه؛ رو دسکتاپ (نسبت‌ابعادِ عریض) دست‌نخورده
+  می‌مونه، همون ظاهرِ قبلی که تأیید شده بود.
+*/
+function useResponsiveFov(baseFov: number, maxFov: number) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const aspect = size.width / size.height;
+    const fov = aspect < 1
+      ? THREE.MathUtils.clamp(baseFov + (1 - aspect) * 35, baseFov, maxFov)
+      : baseFov;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }, [camera, size.width, size.height, baseFov, maxFov]);
+}
+
 function FlythroughCamera({ progressRef, depth }: { progressRef: React.RefObject<number>; depth: number }) {
   const { camera } = useThree();
+  useResponsiveFov(52, 78);
   useFrame(() => {
     const p = progressRef.current;
     const z = -p * depth;
