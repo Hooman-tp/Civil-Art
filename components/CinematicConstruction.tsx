@@ -425,8 +425,7 @@ export default function CinematicConstruction() {
           @keyframes caLocFade { 0% { opacity:0; transform:translate3d(34px,0,0) scale(0.96); filter:blur(7px); } 55% { opacity:0.82; filter:blur(1.5px); } 100% { opacity:1; transform:translate3d(0,0,0) scale(1); filter:blur(0); } }
           @keyframes caTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
           @keyframes caChevronBounce { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(6px); opacity:1; } }
-          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#ffffff 15%,#f5e08a 52%,#d4af37 100%); background-clip:text; -webkit-background-clip:text; color:transparent; text-shadow:0 3px 22px rgba(0,0,0,0.72); filter:drop-shadow(0 0 10px rgba(212,175,55,0.12)); }
-          .ca-location-text::after { content:""; position:absolute; right:0; bottom:-8px; width:34px; height:2px; border-radius:99px; background:linear-gradient(to left,#f5e08a,#d4af37); box-shadow:0 0 12px rgba(212,175,55,0.45); opacity:0.9; }
+          .ca-location-text { position:relative; display:block; background:linear-gradient(135deg,#fff0a8 0%,#f5d76e 24%,#d4af37 52%,#ffd95a 76%,#b8860b 100%); background-clip:text; -webkit-background-clip:text; color:transparent; text-shadow:0 3px 22px rgba(0,0,0,0.72); filter:drop-shadow(0 0 12px rgba(212,175,55,0.28)); }
 
           /* رفع فاصله‌ی سیاه بالای فریم روی iOS Safari: نوار آدرس/تولبار پویا باعث می‌شود 100vh با ارتفاع واقعیِ قابل‌مشاهده فرق کند؛ dvh این را دقیق می‌کند */
           @supports (height: 100dvh) {
@@ -442,7 +441,7 @@ export default function CinematicConstruction() {
             .ca-intro-title { font-size: clamp(22px,7vw,30px) !important; }
             .ca-intro-sub { font-size: 12px !important; margin-top: 12px !important; }
             .ca-location-tag { bottom: 2.25rem !important; right: 1.1rem !important; left: auto !important; text-align: right !important; }
-            .ca-location-tag span { font-size: 22px !important; } .ca-location-text::after { bottom: -6px; width: 28px; }
+            .ca-location-tag span { font-size: 22px !important; }
           }
         `}</style>
 
