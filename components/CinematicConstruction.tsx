@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import FrameSequencePlayer, { FrameSequenceHandle } from "./FrameSequencePlayer";
 
-const VIDEO_SRC = "/videos/construction.mp4";
-
-/*
-  فریم اول ویدیو، از قبل استخراج و به‌صورت عکس ذخیره شده.
-  تا وقتی مرورگر داده‌ی واقعی ویدیو را دانلود می‌کند، این عکس بلافاصله
-  نمایش داده می‌شود و به‌جای صفحه‌ی سیاه، کاربر همان لحظه یک فریم واقعی
-  می‌بیند. همین عکس، بلورشده، به‌عنوان پرکننده‌ی پس‌زمینه در حالت
-  contain هم استفاده می‌شود (توضیح کامل پایین‌تر).
-
-  ساخت این فایل با ffmpeg:
-    ffmpeg -i construction.mp4 -ss 00:00:00.000 -vframes 1 -q:v 2 construction-poster.jpg
-  و قرار دادن در public/videos/construction-poster.jpg
-*/
-const POSTER_SRC = "/videos/construction-poster.jpg";
 const LOGO_SRC = "/images/civil-art-logo.png";
+
+// طول واقعیِ ویدیوی منبع (ثانیه)، از ffprobe؛ چون دیگر <video> ای برای
+// خواندنِ duration نداریم، این عدد را از قبل ثابت نگه می‌داریم.
+const VIDEO_DURATION = 63.533333;
 
 /*
   ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
@@ -26,30 +17,9 @@ const SCROLL_TRACK_VH = 500;
 /*
   ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه). عدد کوچیک‌تر = واکنش
   سریع‌تر/نزدیک‌تر به اسکرول خام؛ عدد بزرگ‌تر = نرم‌تر ولی با کمی
-  تأخیرِ محسوس‌تر. عمداً بدون سقفِ سختِ سرعت (rate cap) — چرا، در
-  کامنتِ کنار تابعِ tick توضیح داده شده.
+  تأخیرِ محسوس‌تر.
 */
 const TIME_SMOOTHING_TAU = 0.26;
-
-// کوچک‌تر از یک فریم ویدیو؛ برای جلوگیری از ست‌کردنِ بی‌فایده‌ی
-// currentTime وقتی چیزی عملاً تغییر نکرده (کاربر ثابت مانده)
-const SEEK_EPSILON = 0.008;
-
-/*
-  آستانه‌ی «عدم تطابق نسبت ابعاد» بین ویدیو (افقی، ۱۶:۹) و ویوپورت.
-  رفعِ باگِ «فیلم رو گوشی زوم شده»: نسخه‌ی قبلی روی همه‌جا از cover
-  استفاده می‌کرد تا مشکلِ نوارهای سیاهِ نسخه‌ی قبل‌تر از آن حل شود؛
-  اما روی گوشیِ عمودیِ باریک، cover یک ویدیوی افقیِ عریض را تا حدی
-  می‌بُرد که فقط برشِ مرکزیِ ~۲۶٪ عرضِ فریم دیده می‌شد — دقیقاً همان
-  چیزی که «زوم‌شده» به‌نظر می‌رسید.
-
-  دوباره تشخیصِ نسبت‌ابعاد فعاله: وقتی این نسبت از این عدد بیشتر شود
-  (گوشیِ عمودی با این ویدیوی افقی)، به‌جای cover از contain استفاده
-  می‌شود (کل فریم دیده می‌شود، بدون برشِ تهاجمی) و پشتش یک پرکننده‌ی
-  بلورشده (یک <img> ساکن از POSTER_SRC، نه ویدیو — چون blur روی
-  <video> رو iOS Safari باگ شناخته‌شده دارد) قرار می‌گیرد.
-*/
-const ASPECT_MISMATCH_THRESHOLD = 1.5;
 
 /*
   مکان هر بخش از خانه بر حسب ثانیه‌ی واقعیِ ویدیو. این اعداد از روی
@@ -73,27 +43,11 @@ const LOCATIONS: { time: number; label: string; eyebrow: string; description: st
 // نسبتی از کل مسیرِ اسکرول (نه ثانیه‌ی ویدیو) که طی آن صفحه‌ی مقدمه محو می‌شود
 const INTRO_FADE_END = 0.035;
 
-/*
-  یک تولیدکننده‌ی عددِ شبه‌تصادفیِ «قطعی» (deterministic): برای عددِ
-  seed یکسان، همیشه خروجیِ یکسان می‌دهد. چرا نه Math.random ساده؟
-  چون این کامپوننت روی سرور هم یک‌بار رندر می‌شود (SSR) و بعد روی
-  کلاینت هم (hydration) — اگر موقعیتِ ستاره‌ها با Math.random ساخته
-  می‌شد، هر بار عددی متفاوت می‌داد و React یک hydration mismatch
-  گزارش می‌کرد (HTML سرور با HTML کلاینت فرق می‌کرد). با این تابع،
-  سرور و کلاینت دقیقاً یک الگوی ستاره‌ی یکسان تولید می‌کنند.
-*/
 function seededRandom(seed: number) {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 }
 
-/*
-  آسمانِ پرستاره به‌عنوان یک SVG استاتیک (همون تکنیکِ BLUEPRINT_GRID
-  که جای دیگه‌ی پروژه استفاده شده: یک الگوی SVG به‌صورت data-URI در
-  background-image). عمداً DOM جداگانه برای هر ستاره ساخته نشده
-  (۱۵۰+ المان با انیمیشنِ جداگانه روی موبایل هزینه‌ی رندر داره)؛ به‌جاش
-  یک تصویرِ ثابت با چشمک‌زنیِ نرمِ کلی روی کل لایه.
-*/
 const STAR_FIELD_BG = (() => {
   const W = 1000;
   const H = 700;
@@ -119,7 +73,7 @@ function ChevronDownIcon() {
 
 export default function CinematicConstruction() {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const videoRef   = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<FrameSequenceHandle>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const locationLabelRef = useRef<HTMLSpanElement>(null);
@@ -129,111 +83,15 @@ export default function CinematicConstruction() {
   const lastLocationRef = useRef<string>(LOCATIONS[0].label);
 
   /*
-    این کامنت رو به‌روز می‌کنم چون فهمیدیم مشکل فقط رو موبایله، نه
-    دسکتاپ — این خودش خیلی چیز مهمی رو مشخص می‌کنه: این دقیقاً همون
-    امضای یک سیاستِ شناخته‌شده‌ی iOS Safari/WebKit است، نه یک مسابقه‌ی
-    hydration (که باید رو هر دو پلتفرم یکسان ظاهر می‌شد).
-
-    iOS Safari، برای صرفه‌جویی در مصرفِ داده/باتری، preload="auto" رو
-    روی یک <video> که autoplay نداره محافظه‌کارانه‌تر از دسکتاپ در نظر
-    می‌گیره — و در برخی حالت‌ها واقعاً بارگذاریِ داده رو تا وقتی یک
-    فراخوانیِ واقعیِ play() (نه صرفاً اسکرول) رخ نده، متوقف/لغو نگه
-    می‌داره. چون ویدیوی ما muted است، این play() از نظر سیاست‌های
-    autoplay مرورگرها مجاز است (autoplayِ بی‌صدا همه‌جا مجاز است).
-    بلافاصله بعدش pause می‌کنیم تا چیزی به‌صورت ناخواسته «پخش» نشه —
-    خودِ کنترلِ currentTime رو کدِ اسکرول انجام می‌ده، نه پخشِ خطی.
-
-    چرا «برو یه صفحه‌ی دیگه، برگرد» قبلاً درستش می‌کرد: تپ‌کردن روی
-    یک لینک یک user activation قویه که این محدودیت رو برای کلِ session
-    باز می‌کنه؛ اسکرولِ صرف همیشه به همون اندازه قوی حساب نمی‌شه.
+    چرا دیگر منطقِ «آن‌لاک»/تشخیصِ نسبت‌ابعاد این‌جا نیست: با canvas،
+    هیچ ویدیویی برای مدیریتِ preload/autoplay وجود ندارد (فقط تصویر
+    بارگذاری می‌شود)، و تشخیصِ cover/contain داخلِ خودِ FrameSequencePlayer
+    روی هر فریم محاسبه می‌شود. کل آن دسته از پیچیدگی‌ها ساختاری حذف شدند،
+    نه صرفاً پنهان.
   */
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.src = VIDEO_SRC;
-    video.load();
-
-    const unlockPromise = video.play();
-    if (unlockPromise && typeof unlockPromise.then === "function") {
-      unlockPromise
-        .then(() => video.pause())
-        .catch(() => {
-          // اگه مرورگر حتی muted-autoplay رو هم اجازه نده، مشکلی نیست؛
-          // فقط یعنی این unlock جواب نداده، بدون کرش‌کردنِ برنامه
-        });
-    }
-  }, []);
-
-  /*
-    اقدام احتیاطی (defensive): اگه به هر دلیلی — شبکه، مرورگر خاص،
-    شرایطی که من نتونستم توی محیط تستم شبیه‌سازی کنم — بارگذاریِ
-    ویدیو گیر کرد و هیچ‌وقت حتی یک بایت هم نگرفت (NETWORK_NO_SOURCE)،
-    یک تلاشِ دوباره‌ی خودکار انجام می‌شه. اگه ویدیو عادی لود بشه، این
-    شرط هیچ‌وقت true نمی‌شه و کاملاً بی‌اثره — هیچ ضرری نداره.
-  */
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const NETWORK_NO_SOURCE = 3;
-    const timer = setTimeout(() => {
-      if (video.readyState === 0 && video.networkState === NETWORK_NO_SOURCE) {
-        video.load();
-      }
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const recomputeFitMode = () => {
-      if (!video.videoWidth || !video.videoHeight) return;
-      const videoAspect    = video.videoWidth / video.videoHeight;
-      const viewportAspect = window.innerWidth / window.innerHeight;
-      const mismatch =
-        Math.max(videoAspect, viewportAspect) / Math.min(videoAspect, viewportAspect);
-      setFitMode(mismatch > ASPECT_MISMATCH_THRESHOLD ? "contain" : "cover");
-    };
-
-    const onLoadedMetadata = () => {
-      recomputeFitMode();
-      requestAnimationFrame(() => {
-        (window as unknown as { __lenis?: { resize?: () => void } }).__lenis?.resize?.();
-      });
-    };
-
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(recomputeFitMode, 150);
-    };
-
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-
-    if (video.readyState >= 1 && video.videoWidth > 0) {
-      onLoadedMetadata();
-    }
-
-    return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
-  }, []);
-
   useEffect(() => {
     const wrapper = wrapperRef.current;
-    const video   = videoRef.current;
-    if (!wrapper || !video) return;
+    if (!wrapper) return;
 
     let rafId: number | null = null;
     let lastTs: number | null = null;
@@ -241,21 +99,13 @@ export default function CinematicConstruction() {
     let hasSyncedInitial = false;
 
     const getTargetProgress = () => {
-      const rect  = wrapper.getBoundingClientRect();
+      const rect = wrapper.getBoundingClientRect();
       const total = wrapper.offsetHeight - window.innerHeight;
       if (total <= 0) return 0;
       const scrolled = -rect.top;
       return Math.max(0, Math.min(1, scrolled / total));
     };
 
-    /*
-      چرا بدون سقفِ سختِ سرعت: یک نسخه‌ی قبلی، سرعتِ پخش را به یک
-      عددِ ثابت (مثلاً حداکثر ۱.۱۵ برابر سرعتِ واقعی) محدود می‌کرد.
-      چون این ویدیو ~۶۴ ثانیه‌ست، آن سقف باعث می‌شد دیدنِ کاملش حداقل
-      ~۵۵ ثانیه اسکرولِ پیوسته لازم داشته باشد (صرف‌نظر از سرعتِ دستِ
-      کاربر) و برعکس‌کردنِ ناگهانیِ جهتِ اسکرول را هم دیر/کند می‌کرد.
-      فرمولِ فعلی (خالص exponential smoothing) این مشکل را ندارد.
-    */
     const tick = (ts: number) => {
       rafId = requestAnimationFrame(tick);
 
@@ -269,16 +119,13 @@ export default function CinematicConstruction() {
         progressFillRef.current.style.width = `${p * 100}%`;
       }
 
-      // محو شدنِ صفحه‌ی مقدمه، فقط بر اساسِ پیشرفتِ خامِ اسکرول (نه آماده‌بودنِ ویدیو)
       if (introRef.current) {
         const introOpacity = Math.max(0, 1 - p / INTRO_FADE_END);
         introRef.current.style.opacity = String(introOpacity);
         introRef.current.style.pointerEvents = introOpacity <= 0.02 ? "none" : "auto";
       }
 
-      if (!(video.readyState >= 2 && video.duration)) return;
-
-      const targetTime = p * video.duration;
+      const targetTime = p * VIDEO_DURATION;
 
       if (!hasSyncedInitial) {
         displayedTime = targetTime;
@@ -288,9 +135,7 @@ export default function CinematicConstruction() {
         displayedTime += (targetTime - displayedTime) * alpha;
       }
 
-      if (Math.abs(video.currentTime - displayedTime) > SEEK_EPSILON) {
-        video.currentTime = displayedTime;
-      }
+      playerRef.current?.setProgress(displayedTime / VIDEO_DURATION);
 
       // برچسبِ مکان: کدام بخش از خانه، بر اساس ثانیه‌ی واقعیِ نمایش‌داده‌شده
       let currentLabel = LOCATIONS[0].label;
@@ -326,22 +171,6 @@ export default function CinematicConstruction() {
           background: "#050505",
         }}
       >
-        {/* پرکننده‌ی بلورشده‌ی پس‌زمینه؛ فقط وقتی fitMode برابر contain است مونت می‌شود (نسبت ابعاد ویدیو و ویوپورت خیلی فرق دارند) */}
-        {fitMode === "contain" && (
-          <img
-            src={POSTER_SRC}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover",
-              filter: "blur(35px) brightness(0.35) saturate(0.4)",
-              transform: "scale(1.15)",
-              zIndex: 0,
-            }}
-          />
-        )}
-
         <div
           className="cinematic-video-frame"
           style={{
@@ -353,24 +182,7 @@ export default function CinematicConstruction() {
             overflow: "hidden",
           }}
         >
-          <video
-            ref={videoRef}
-            muted
-            autoPlay
-            playsInline
-            preload="auto"
-            // @ts-expect-error -- React runtime supports fetchPriority (camelCase) but @types/react hasn't added it to VideoHTMLAttributes yet
-            fetchPriority="high"
-            poster={POSTER_SRC}
-            aria-hidden="true"
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "block",
-              objectFit: fitMode,
-              objectPosition: "center",
-            }}
-          />
+          <FrameSequencePlayer ref={playerRef} />
         </div>
 
         <style>{`
@@ -485,15 +297,6 @@ export default function CinematicConstruction() {
           </div>
         </div>
 
-        {/*
-          صفحه‌ی مقدمه: لوگو + عنوان + راهنمای اسکرول، روی زمینه‌ی
-          آسمانِ پرستاره. کاملاً مستقل از آماده‌بودنِ ویدیوست (به محضِ
-          رندرِ کامپوننت نمایش داده می‌شود، نه بعد از لودِ ویدیو) و با
-          شروعِ اسکرول محو می‌شود. اسپینرِ لودینگِ قبلی حذف شد چون این
-          صفحه همان نقش را بهتر ایفا می‌کند: هم برندشده است، هم به
-          کاربر می‌گوید چه‌کار کند، و در فاصله‌ای که کاربر آن را
-          می‌خواند، ویدیو فرصتِ لود شدن پیدا می‌کند.
-        */}
         <div
           ref={introRef}
           style={{

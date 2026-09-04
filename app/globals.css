@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+.font-vazir {
+  font-family: "Vazirmatn Variable", Tahoma, sans-serif;
+}
+
 /*
   ══════════════════════════════════════════════════════════
   این فایل جایگزین globals.css پیش‌فرض create-next-app شد.

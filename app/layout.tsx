@@ -7,10 +7,8 @@ import ScrollProgress from "../components/ScrollProgress";
 import StructuredData from "../components/StructuredData";
 import WhatsAppButton from "../components/WhatsAppButton";
 import SkipToContent from "../components/SkipToContent";
-import { Vazirmatn } from "next/font/google";
+import "@fontsource-variable/vazirmatn/wght.css";
 import type { Metadata, Viewport } from "next";
-
-const vazir = Vazirmatn({ subsets: ["arabic"] });
 
 export const metadata: Metadata = {
   title: {
@@ -63,7 +61,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl">
       <body
-        className={vazir.className}
+        className="font-vazir"
         style={{ overflowX: "hidden", background: "#050505", color: "#fff" }}
       >
         <SkipToContent />
