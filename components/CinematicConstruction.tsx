@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import FrameSequencePlayer, { FrameSequenceHandle } from "./FrameSequencePlayer";
 
 const LOGO_SRC = "/images/civil-art-logo.png";
 
-// طول واقعیِ ویدیوی منبع (ثانیه)، از ffprobe؛ چون دیگر <video> ای برای
-// خواندنِ duration نداریم، این عدد را از قبل ثابت نگه می‌داریم.
-const VIDEO_DURATION = 63.533333;
+// طول واقعیِ ویدیوی منبع (ثانیه). دو منبع (افقی دسکتاپ/عمودی موبایل)
+// تقریباً دقیقاً هم‌زمان‌اند (۶۳.۵۳ در برابر ۶۳.۵۵ ثانیه)، پس یک عدد
+// مشترک برای هر دو کافی‌ست.
+const VIDEO_DURATION = 63.53;
+
+const MOBILE_BREAKPOINT = 768;
+const DESKTOP_FRAMES = { count: 260, prefix: "/videos/frames/frame_" };
+const MOBILE_FRAMES = { count: 260, prefix: "/videos/frames-mobile/frame_" };
 
 /*
   ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
@@ -81,6 +86,12 @@ export default function CinematicConstruction() {
   const locationDescriptionRef = useRef<HTMLParagraphElement>(null);
   const locationWrapRef = useRef<HTMLDivElement>(null);
   const lastLocationRef = useRef<string>(LOCATIONS[0].label);
+  const [device, setDevice] = useState<"desktop" | "mobile" | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDevice(window.innerWidth < MOBILE_BREAKPOINT ? "mobile" : "desktop");
+  }, []);
 
   /*
     چرا دیگر منطقِ «آن‌لاک»/تشخیصِ نسبت‌ابعاد این‌جا نیست: با canvas،
@@ -182,7 +193,13 @@ export default function CinematicConstruction() {
             overflow: "hidden",
           }}
         >
-          <FrameSequencePlayer ref={playerRef} />
+          {device && (
+            <FrameSequencePlayer
+              ref={playerRef}
+              frameCount={device === "mobile" ? MOBILE_FRAMES.count : DESKTOP_FRAMES.count}
+              framePrefix={device === "mobile" ? MOBILE_FRAMES.prefix : DESKTOP_FRAMES.prefix}
+            />
+          )}
         </div>
 
         <style>{`
