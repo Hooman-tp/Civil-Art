@@ -11,8 +11,8 @@ const LOGO_SRC = "/images/civil-art-logo.png";
 const VIDEO_DURATION = 63.53;
 
 const MOBILE_BREAKPOINT = 768;
-const DESKTOP_FRAMES = { count: 520, prefix: "/videos/frames/frame_" };
-const MOBILE_FRAMES = { count: 520, prefix: "/videos/frames-mobile/frame_" };
+const DESKTOP_FRAMES = { count: 960, prefix: "/videos/frames/frame_" };
+const MOBILE_FRAMES = { count: 960, prefix: "/videos/frames-mobile/frame_" };
 
 /*
   ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
@@ -20,11 +20,27 @@ const MOBILE_FRAMES = { count: 520, prefix: "/videos/frames-mobile/frame_" };
 const SCROLL_TRACK_VH = 500;
 
 /*
-  ثابت زمانیِ نرم‌سازیِ نمایی (بر حسب ثانیه). عدد کوچیک‌تر = واکنش
-  سریع‌تر/نزدیک‌تر به اسکرول خام؛ عدد بزرگ‌تر = نرم‌تر ولی با کمی
-  تأخیرِ محسوس‌تر.
+  نرمیِ حرکتِ فیلم: بین اسکرول و فیلم یک «دنبال‌کننده‌ی فنری» (SmoothDamp؛
+  همان الگوریتمِ بازی‌ها) قرار دارد. برخلافِ نرم‌سازیِ نمایی/lerp که فقط
+  موقعیت را دنبال می‌کند، این یکی «سرعت» را هم حفظ می‌کند:
+   - شروع و پایانِ حرکت ناگهانی نیست؛ با ایستادنِ اسکرول، فیلم با سرعتِ
+     رو‌به‌کاهش چند لحظه‌ی دیگر ادامه می‌دهد؛
+   - پیشروی در هر فریمِ مرورگر یک‌دست است، پس «تکه‌تکه» نمی‌شود.
+  زمان بر حسب ثانیه. بزرگ‌تر = سنگین‌تر/سینمایی‌تر ولی با تأخیر بیشتر،
+  کوچک‌تر = واکنشِ سریع‌تر. بازه‌ی منطقی: ۰٫۳ تا ۰٫۹
 */
-const TIME_SMOOTHING_TAU = 0.26;
+const SMOOTH_TIME = 0.5;
+
+function smoothDamp(current: number, target: number, velocity: number, smoothTime: number, dt: number): [number, number] {
+  const omega = 2 / smoothTime;
+  const x = omega * dt;
+  const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  const change = current - target;
+  const temp = (velocity + omega * change) * dt;
+  const nextVelocity = (velocity - omega * temp) * e;
+  const next = target + (change + temp) * e;
+  return [next, nextVelocity];
+}
 
 /*
   مکان هر بخش از خانه بر حسب ثانیه‌ی واقعیِ ویدیو. این اعداد از روی
@@ -107,6 +123,7 @@ export default function CinematicConstruction() {
     let rafId: number | null = null;
     let lastTs: number | null = null;
     let displayedTime = 0;
+    let velocity = 0;
     let hasSyncedInitial = false;
 
     const getTargetProgress = () => {
@@ -121,7 +138,7 @@ export default function CinematicConstruction() {
       rafId = requestAnimationFrame(tick);
 
       if (lastTs === null) lastTs = ts;
-      const dt = (ts - lastTs) / 1000;
+      const dt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
       lastTs = ts;
 
       const p = getTargetProgress();
@@ -142,8 +159,14 @@ export default function CinematicConstruction() {
         displayedTime = targetTime;
         hasSyncedInitial = true;
       } else {
-        const alpha = 1 - Math.exp(-dt / TIME_SMOOTHING_TAU);
-        displayedTime += (targetTime - displayedTime) * alpha;
+        const [nextTime, nextVelocity] = smoothDamp(displayedTime, targetTime, velocity, SMOOTH_TIME, dt);
+        displayedTime = Math.min(VIDEO_DURATION, Math.max(0, nextTime));
+        velocity = nextVelocity;
+        // رسیدن به هدف: دیگر نلرزد و ثابت بماند
+        if (Math.abs(displayedTime - targetTime) < 0.002 && Math.abs(velocity) < 0.01) {
+          displayedTime = targetTime;
+          velocity = 0;
+        }
       }
 
       playerRef.current?.setProgress(displayedTime / VIDEO_DURATION);
