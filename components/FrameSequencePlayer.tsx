@@ -36,6 +36,20 @@ const FrameSequencePlayer = forwardRef<FrameSequenceHandle, Props>(function Fram
   const currentExactRef = useRef(0);
   const [firstFrameReady, setFirstFrameReady] = useState(false);
 
+  const isReady = (img?: HTMLImageElement): img is HTMLImageElement =>
+    !!img && img.complete && img.naturalWidth > 0;
+
+  const nearestReady = (index: number) => {
+    const imgs = imagesRef.current;
+    for (let d = 0; d < frameCount; d++) {
+      const before = imgs[index - d];
+      if (isReady(before)) return before;
+      const after = imgs[index + d];
+      if (isReady(after)) return after;
+    }
+    return undefined;
+  };
+
   const drawAt = (exactIndex: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -46,8 +60,13 @@ const FrameSequencePlayer = forwardRef<FrameSequenceHandle, Props>(function Fram
     const highIndex = Math.min(frameCount - 1, lowIndex + 1);
     const blend = exactIndex - lowIndex;
 
-    const lowImg = imagesRef.current[lowIndex];
-    if (!lowImg || !lowImg.complete || lowImg.naturalWidth === 0) return;
+    // با فریم‌های زیاد، همه‌ی فریم‌ها هم‌زمان نمی‌رسند (بارگذاری درشت‌به‌ریز است).
+    // اگر فریمِ دقیق هنوز نیامده، نزدیک‌ترین فریمِ آماده نشان داده می‌شود
+    // (به‌جای ماندنِ تصویرِ قبلی روی صفحه)، و بدون کراس‌فِید.
+    const exactLow = imagesRef.current[lowIndex];
+    const lowReady = isReady(exactLow);
+    const lowImg = lowReady ? exactLow : nearestReady(lowIndex);
+    if (!lowImg) return;
 
     const dpr = window.devicePixelRatio || 1;
     const cssW = canvas.clientWidth;
@@ -75,7 +94,7 @@ const FrameSequencePlayer = forwardRef<FrameSequenceHandle, Props>(function Fram
     drawOne(lowImg, 1);
 
     const highImg = imagesRef.current[highIndex];
-    if (blend > 0.02 && highImg && highImg.complete && highImg.naturalWidth > 0) {
+    if (lowReady && blend > 0.02 && isReady(highImg)) {
       drawOne(highImg, blend);
     }
     ctx.globalAlpha = 1;
@@ -91,21 +110,55 @@ const FrameSequencePlayer = forwardRef<FrameSequenceHandle, Props>(function Fram
 
   useEffect(() => {
     let cancelled = false;
-    const images: HTMLImageElement[] = [];
-
-    for (let i = 0; i < frameCount; i++) {
-      const img = new Image();
-      img.src = `${framePrefix}${String(i + 1).padStart(3, "0")}.jpg`;
-      img.onload = () => {
-        if (i === 0 && !cancelled) {
-          drawAt(0);
-          setFirstFrameReady(true);
-          onFirstFrameReady?.();
-        }
-      };
-      images.push(img);
-    }
+    const images: HTMLImageElement[] = Array.from({ length: frameCount }, () => new Image());
     imagesRef.current = images;
+
+    // بارگذاری «درشت به ریز»: اول فریمِ اول و آخر، بعد هر ۶۴تا، هر ۳۲تا، ...
+    // تا همه. با ۵۲۰ فریم، درخواستِ پشت‌سرهمِ ۱ تا ۵۲۰ باعث می‌شد اسکرولِ
+    // اولیه فقط ابتدای ویدیو را ببیند؛ حالا از همان ثانیه‌های اول کلِ مسیر
+    // (با فریمِ نزدیک) قابل‌اسکرول است و بعد ریزتر می‌شود.
+    const order: number[] = [];
+    const seen = new Set<number>();
+    const add = (i: number) => {
+      if (i >= 0 && i < frameCount && !seen.has(i)) {
+        seen.add(i);
+        order.push(i);
+      }
+    };
+    add(0);
+    add(frameCount - 1);
+    for (const stride of [64, 32, 16, 8, 4, 2, 1]) {
+      for (let i = 0; i < frameCount; i += stride) add(i);
+    }
+
+    const MAX_PARALLEL = 6;
+    let cursor = 0;
+    let active = 0;
+
+    const pump = () => {
+      while (!cancelled && active < MAX_PARALLEL && cursor < order.length) {
+        const i = order[cursor++];
+        const img = images[i];
+        active++;
+        const finish = () => {
+          active--;
+          pump();
+        };
+        img.onload = () => {
+          if (!cancelled) {
+            if (i === 0) {
+              setFirstFrameReady(true);
+              onFirstFrameReady?.();
+            }
+            drawAt(currentExactRef.current);
+          }
+          finish();
+        };
+        img.onerror = finish;
+        img.src = `${framePrefix}${String(i + 1).padStart(3, "0")}.jpg`;
+      }
+    };
+    pump();
 
     const redraw = () => drawAt(currentExactRef.current);
     const ro = new ResizeObserver(redraw);

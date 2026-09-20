@@ -11,8 +11,8 @@ const LOGO_SRC = "/images/civil-art-logo.png";
 const VIDEO_DURATION = 63.53;
 
 const MOBILE_BREAKPOINT = 768;
-const DESKTOP_FRAMES = { count: 260, prefix: "/videos/frames/frame_" };
-const MOBILE_FRAMES = { count: 260, prefix: "/videos/frames-mobile/frame_" };
+const DESKTOP_FRAMES = { count: 520, prefix: "/videos/frames/frame_" };
+const MOBILE_FRAMES = { count: 520, prefix: "/videos/frames-mobile/frame_" };
 
 /*
   ارتفاع کل بخش اسکرول‌محور (شامل ۱۰۰vh استیکیِ داخلش).
